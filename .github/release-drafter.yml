@@ -1,0 +1,36 @@
+name-template: 'Release v$RESOLVED_VERSION 🌈'
+tag-template: 'v$RESOLVED_VERSION'
+target-commitish: main
+categories:
+  - title: '💡 機能追加'
+    labels:
+      - enhancement
+  - title: '🕷 バグ'
+    labels:
+      - bug
+      - invalid
+  - title: '📃 ドキュメント'
+    labels:
+      - documents
+  - title: '⬆️ 依存関係'
+    labels:
+      - 'dependencies'
+change-template: '- $TITLE @$AUTHOR (#$NUMBER)'
+version-resolver:
+  major:
+    labels:
+      - 'major'
+  minor:
+    labels:
+      - 'minor'
+  patch:
+    labels:
+      - 'patch'
+  default: patch
+template: |
+  ## 変更内容
+
+  $CHANGES
+
+  **CONTRIBUTORS**:
+  $CONTRIBUTORS
