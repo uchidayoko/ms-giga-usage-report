@@ -1,0 +1,20 @@
+# CODEOWNERSファイル
+# このファイルは、リポジトリ内のコードに対する責任者（Code Owners）を定義します。
+
+# リポジトリ全体の責任者
+* @HiroshiYoshino @RitsukiSatoUchida
+
+# .github
+/.github/ @RitsukiSatoUchida
+
+# src/000_setup
+/src/000_setup/ @RitsukiSatoUchida @tetsuya-yamamoto-uchida
+
+# src/010_テナントの利用状況可視化サンプル
+/src/010_テナントの利用状況可視化サンプル/ @takanori-ishikawa01 @MasayaTachizawa @misato-nakashima
+
+# src/020_学校ごとの利用状況可視化ンプル
+/src/020_学校ごとの利用状況可視化ンプル/ @takanori-ishikawa01 @MasayaTachizawa @misato-nakashima
+
+# Markdownファイル（.md）
+**/*.md @HiroshiYoshino @RitsukiSatoUchida @MasayaTachizawa @misato-nakashima @tetsuya-yamamoto-uchida

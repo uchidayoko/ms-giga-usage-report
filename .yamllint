@@ -1,0 +1,4 @@
+extends: default
+rules:
+  line-length:  # 行の長さ制限
+    level: warning  # 超過しても警告にとどめる
