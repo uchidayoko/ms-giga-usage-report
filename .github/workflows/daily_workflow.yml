@@ -1,0 +1,435 @@
+name: daily_workflow
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 1 * * *'
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_TENANT_NAME: ${{ secrets.AZURE_TENANT_NAME }}
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+
+    steps:
+      - name: Set env
+        shell: bash
+        run: |
+          # SharePointサイト名
+          echo "SITE_NAME=M365UsageRecords" >> $GITHUB_ENV
+
+          # SharePointライブラリ名
+          echo "DOC_LIB=Shared%20Documents" >> $GITHUB_ENV
+
+          # 日付リストの初期化
+          date_list=""
+          # 3日前から前日までの日付リストを作成
+          for i in {3..1}; do
+            date=$(date -u -d "$i days ago" +"%Y-%m-%d")
+            date_list="${date_list}${date},"
+          done
+          # 最後のカンマを削除
+          date_list=${date_list%,}
+          # 環境変数に設定
+          echo "DATE_LIST=$date_list" >> $GITHUB_ENV
+
+          # 今日
+          ## 日付
+          utcToday=$(date -u -d "today" +"%Y-%m-%d")
+          echo "TODAY_DATE=$utcToday" >> $GITHUB_ENV
+          utcTodayYear=$(date -u -d "today" +"%Y")
+          utcTodayMonth=$(date -u -d "today" +"%m")
+          ## 年度
+          if [ "$utcTodayMonth" -le 3 ]; then
+            utcSchoolYear=$((utcTodayYear - 1))
+          else
+            utcSchoolYear=$utcTodayYear
+          fi
+          echo "TODAY_SCHOOL_YEAR=$utcSchoolYear" >> $GITHUB_ENV
+
+          # データ種ごとのフォルダ
+          ## 利用状況レポート匿名化設定
+          echo "ADMIN_REPORT_SETTING_DIR=M365UsageRecords/M365UsageReports" >> $GITHUB_ENV
+          ## 利用状況レポート
+          echo "USAGE_REPORT_DIR=M365UsageRecords/M365UsageReports" >> $GITHUB_ENV
+          ## Entra ID ユーザー情報
+          echo "ENTRAID_DIR=Roster/MsGraph/UnConcealed" >> $GITHUB_ENV
+
+      - name: Install PowerShell
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y powershell
+
+      - name: モジュールのインストール
+        shell: pwsh
+        run: |
+          # Microsoft.Graph.Beta.Reportsモジュールのインストール
+          Install-Module Microsoft.Graph.Beta.Reports -Force -Scope CurrentUser -AllowClobber -Repository PSGallery
+
+      - name: アクセストークンの取得 (GraphAPI)
+        shell: bash
+        run: |
+          federated_token=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=api://AzureADTokenExchange" | jq -r '.value')
+          response=$(curl -s -X POST "https://login.microsoftonline.com/$AZURE_TENANT_ID/oauth2/v2.0/token" \
+              -F client_id=$AZURE_CLIENT_ID \
+              -F grant_type=client_credentials \
+              -F scope=https://graph.microsoft.com/.default \
+              -F client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer \
+              -F client_assertion=$federated_token)
+          access_token=$(echo $response | jq -r '.access_token')
+          echo "GRAPH_TOKEN=$access_token" >> $GITHUB_ENV
+
+      - name: アクセストークンの取得 (SharePoint)
+        shell: bash
+        run: |
+          federated_token=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=api://AzureADTokenExchange" | jq -r '.value')
+          response=$(curl -s -X POST "https://login.microsoftonline.com/$AZURE_TENANT_ID/oauth2/v2.0/token" \
+              -F client_id=$AZURE_CLIENT_ID \
+              -F grant_type=client_credentials \
+              -F scope=https://$AZURE_TENANT_NAME.sharepoint.com/.default \
+              -F client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer \
+              -F client_assertion=$federated_token)
+          access_token=$(echo $response | jq -r '.access_token')
+          echo "SHAREPOINT_TOKEN=$access_token" >> $GITHUB_ENV
+
+      - name: データの取得(利用状況レポートの匿名化設定)
+        shell: pwsh
+        run: |
+          Import-Module Microsoft.Graph.Beta.Reports -Force
+          echo "GRAPH_TOKEN is: $GRAPH_TOKEN"
+          $secureToken = ConvertTo-SecureString $env:GRAPH_TOKEN -AsPlainText -Force
+          Connect-MgGraph -AccessToken $secureToken
+
+          # 日付設定
+          $dateStr = $env:TODAY_DATE
+          $date = ([Datetime]$dateStr)
+          $school_year = $env:TODAY_SCHOOL_YEAR
+
+          # 出力先ディレクトリの作成
+          $outputDir = "$env:ADMIN_REPORT_SETTING_DIR/AdminReportSettings/school_year=${school_year}"
+          if (-not (Test-Path -Path $outputDir)) {
+              New-Item -ItemType Directory -Path $outputDir
+          }
+
+          # Get-MgBetaAdminReportSettingの実行
+          $outputPath = "$outputDir/${dateStr}_result_Get-MgBetaAdminReportSetting.json"
+          $reportSettings = Get-MgBetaAdminReportSetting
+
+          # JSON形式に変換してファイルに出力
+          $reportSettings | ConvertTo-Json -Depth 10 | Out-File -FilePath $outputPath
+
+          # ファイルが正しく生成されたか確認
+          if (Test-Path $outputPath) {
+              Write-Host "ファイル '$outputPath' が生成されました。"
+          } else {
+              Write-Host "ファイル '$outputPath' が生成できませんでした。"
+          }
+
+          # DisplayConcealedNamesの値に基づいてCONCEALED_SETTING環境変数を設定
+          $displayConcealedNames = $reportSettings.DisplayConcealedNames
+          if ($displayConcealedNames -eq "True") {
+              "CONCEALED_SETTING=Concealed" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          } else {
+              "CONCEALED_SETTING=UnConcealed" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          }
+          Disconnect-MgGraph
+
+      - name: SharePointへのアップロード(利用状況レポートの匿名化設定)
+        shell: pwsh
+        run: |
+          $dateStr = $env:TODAY_DATE
+          $school_year = $env:TODAY_SCHOOL_YEAR
+
+          # フォルダ名とそれに対応するファイルパス
+          $foldersAndFiles = @(
+            @{ name = "AdminReportSettings"; file = "${dateStr}_result_Get-MgBetaAdminReportSetting.json" }
+          )
+
+          # フォルダを作成する関数
+          function Create-FolderRecursively {
+              param (
+                  [string]$folderPath
+              )
+              $parts = $folderPath.TrimStart("/").Split('/')
+              $currentPath = "/sites/$env:SITE_NAME/$env:DOC_LIB"
+
+              foreach ($part in $parts) {
+                  $currentPath = "$currentPath/$part"
+                  $encodedPath = [uri]::EscapeDataString($currentPath.Trim('/'))
+                  $checkUrl = "https://$env:AZURE_TENANT_NAME.sharepoint.com/sites/$env:SITE_NAME/_api/web/GetFolderByServerRelativeUrl('$encodedPath')"
+                  $createUrl = "https://$env:AZURE_TENANT_NAME.sharepoint.com/sites/$env:SITE_NAME/_api/web/folders"
+
+                  try {
+                      # フォルダが存在するか確認
+                      Invoke-RestMethod -Uri $checkUrl -Method Get -Headers @{ Authorization = "Bearer $env:SHAREPOINT_TOKEN"; "Accept" = "application/json;odata=verbose" }
+                  } catch {
+                      # フォルダが存在しない場合は作成
+                      Write-Host "フォルダ '$currentPath' を作成しています..."
+                      $body = @{ "__metadata" = @{ "type" = "SP.Folder" }; "ServerRelativeUrl" = $currentPath } | ConvertTo-Json
+                      Invoke-RestMethod -Uri $createUrl -Method Post -Headers @{ Authorization = "Bearer $env:SHAREPOINT_TOKEN"; "Accept" = "application/json;odata=verbose"; "Content-Type" = "application/json;odata=verbose" } -Body $body
+                  }
+              }
+          }
+
+          # ファイルとフォルダの処理
+          foreach ($item in $foldersAndFiles) {
+              $name = $item.name
+              $filePath = "$env:ADMIN_REPORT_SETTING_DIR/$name/school_year=${school_year}/$($item.file)"
+              $fileName = [System.IO.Path]::GetFileName($filePath)
+              $folder = "/$env:ADMIN_REPORT_SETTING_DIR/$name/school_year=${school_year}"
+
+              # フォルダを1つずつ作成
+              Create-FolderRecursively -folderPath $folder
+
+              $uploadUrl = "https://$env:AZURE_TENANT_NAME.sharepoint.com/sites/$env:SITE_NAME/_api/web/GetFolderByServerRelativeUrl('/sites/$env:SITE_NAME/$env:DOC_LIB$folder')/Files/add(url='$fileName',overwrite=true)"
+
+              # ファイルの存在を確認してアップロード
+              if (Test-Path $filePath) {
+                  $fileContent = [System.IO.File]::ReadAllBytes($filePath)
+                  Invoke-RestMethod -Uri $uploadUrl -Method Post -Headers @{ Authorization = "Bearer $env:SHAREPOINT_TOKEN"; "Accept" = "application/json;odata=verbose" } -Body $fileContent -ContentType "application/octet-stream"
+                  Write-Host "ファイル '$filePath' をアップロードしました。"
+              } else {
+                  Write-Host "ファイル '$filePath' が見つかりません。"
+              }
+          }
+
+      - name: データの取得(利用状況レポート)
+        shell: pwsh
+        run: |
+          Import-Module Microsoft.Graph.Reports -Force
+          $ErrorActionPreference = 'Stop'
+
+          function Invoke-WithRetry {
+              param(
+                  [scriptblock]$ScriptBlock,
+                  [int]$MaxRetries = 3,
+                  [int]$DelaySeconds = 5
+              )
+              $retryCount = 0
+              $success = $false
+
+              while (-not $success -and $retryCount -lt $MaxRetries) {
+                  try {
+                      & $ScriptBlock
+                      $success = $true
+                  } catch {
+                      $retryCount++
+                      Write-Output "Attempt $retryCount failed with error: $_"
+                      if ($retryCount -ge $MaxRetries) {
+                          throw "Command failed after $MaxRetries attempts."
+                      } else {
+                          Write-Output "Retrying in $DelaySeconds seconds..."
+                          Start-Sleep -Seconds $DelaySeconds
+                      }
+                  }
+              }
+          }
+          echo "GRAPH_TOKEN is: $GRAPH_TOKEN"
+          $secureToken = ConvertTo-SecureString $env:GRAPH_TOKEN -AsPlainText -Force
+          Connect-MgGraph -AccessToken $secureToken
+
+          # DATE_LIST 環境変数を取得し、カンマで分割して配列に変換
+          $dates = $env:DATE_LIST -split ','
+          # 各日付に対して処理を実行
+          foreach ($dateStr in $dates) {
+              Write-Output "Processing date: $dateStr"
+              # 文字列をDateTime型に変換
+              $date = [DateTime]::ParseExact($dateStr, "yyyy-MM-dd", $null)
+
+              # 年と月の情報を取得
+              $year = $date.Year
+              $month = $date.Month
+              # 月によって年度を計算
+              if ($month -le 3) {
+                  $school_year = $year - 1
+              } else {
+                  $school_year = $year
+              }
+
+              # レポート名と出力ファイルパスのペアを配列にまとめる
+              $reports = @(
+                @{ Name = "M365AppUserDetail"; Cmd = "Get-MgReportM365AppUserDetail" },
+                @{ Name = "Office365ActiveUserDetail"; Cmd = "Get-MgReportOffice365ActiveUserDetail" }
+              )
+
+              # リトライ機能を使って各レポートを実行
+              foreach ($report in $reports) {
+                  $outputPath = "$env:USAGE_REPORT_DIR/$env:CONCEALED_SETTING/$($report.Name)/school_year=${school_year}/${dateStr}_result_Get-MgReport$($report.Name).csv"
+                  Invoke-WithRetry {
+                      & $($report.Cmd) -Date $date -OutFile $outputPath
+                  }
+              }
+          }
+
+          Disconnect-MgGraph
+
+      - name: SharePointへのアップロード(利用状況レポート)
+        shell: pwsh
+        run: |
+          # DATE_LIST 環境変数を取得し、カンマで分割して配列に変換
+          $dates = $env:DATE_LIST -split ','
+
+          # 各日付に対して処理を実行
+          foreach ($dateStr in $dates) {
+              Write-Output "Processing date: $dateStr"
+              # 文字列をDateTime型に変換
+              $date = [DateTime]::ParseExact($dateStr, "yyyy-MM-dd", $null)
+
+              # 年と月の情報を取得
+              $year = $date.Year
+              $month = $date.Month
+              # 月によって年度を計算
+              if ($month -le 3) {
+                  $school_year = $year - 1
+              } else {
+                  $school_year = $year
+              }
+              # フォルダ名とそれに対応するファイルパス
+              $foldersAndFiles = @(
+                @{ name = "M365AppUserDetail"; file = "${dateStr}_result_Get-MgReportM365AppUserDetail.csv" },
+                @{ name = "Office365ActiveUserDetail"; file = "${dateStr}_result_Get-MgReportOffice365ActiveUserDetail.csv" }
+              )
+
+              # フォルダを作成する関数
+              function Create-FolderRecursively {
+                  param (
+                      [string]$folderPath
+                  )
+                  $parts = $folderPath.TrimStart("/").Split('/')
+                  $currentPath = "/sites/$env:SITE_NAME/$env:DOC_LIB"
+
+                  foreach ($part in $parts) {
+                      $currentPath = "$currentPath/$part"
+                      $encodedPath = [uri]::EscapeDataString($currentPath.Trim('/'))
+                      $checkUrl = "https://$env:AZURE_TENANT_NAME.sharepoint.com/sites/$env:SITE_NAME/_api/web/GetFolderByServerRelativeUrl('$encodedPath')"
+                      $createUrl = "https://$env:AZURE_TENANT_NAME.sharepoint.com/sites/$env:SITE_NAME/_api/web/folders"
+                      try {
+                          # フォルダが存在するか確認
+                          Invoke-RestMethod -Uri $checkUrl -Method Get -Headers @{ Authorization = "Bearer $env:SHAREPOINT_TOKEN"; "Accept" = "application/json;odata=verbose" }
+                      } catch {
+                          # フォルダが存在しない場合は作成
+                          Write-Host "フォルダ '$currentPath' を作成しています..."
+                          $body = @{ "__metadata" = @{ "type" = "SP.Folder" }; "ServerRelativeUrl" = $currentPath } | ConvertTo-Json
+                          Invoke-RestMethod -Uri $createUrl -Method Post -Headers @{ Authorization = "Bearer $env:SHAREPOINT_TOKEN"; "Accept" = "application/json;odata=verbose"; "Content-Type" = "application/json;odata=verbose" } -Body $body
+                      }
+                  }
+              }
+
+              # ファイルとフォルダの処理
+              foreach ($item in $foldersAndFiles) {
+                  $name = $item.name
+                  $filePath = "$env:USAGE_REPORT_DIR/$env:CONCEALED_SETTING/$name/school_year=${school_year}/$($item.file)"
+                  $fileName = [System.IO.Path]::GetFileName($filePath)
+                  $folder = "/$env:USAGE_REPORT_DIR/$env:CONCEALED_SETTING/$name/school_year=${school_year}"
+
+                  # フォルダを1つずつ作成
+                  Create-FolderRecursively -folderPath $folder
+
+                  $uploadUrl = "https://$env:AZURE_TENANT_NAME.sharepoint.com/sites/$env:SITE_NAME/_api/web/GetFolderByServerRelativeUrl('/sites/$env:SITE_NAME/$env:DOC_LIB$folder')/Files/add(url='$fileName',overwrite=true)"
+
+                  # ファイルの存在を確認してアップロード
+                  if (Test-Path $filePath) {
+                      $fileContent = [System.IO.File]::ReadAllBytes($filePath)
+                      Invoke-RestMethod -Uri $uploadUrl -Method Post -Headers @{ Authorization = "Bearer $env:SHAREPOINT_TOKEN"; "Accept" = "application/json;odata=verbose" } -Body $fileContent -ContentType "application/octet-stream"
+                      Write-Host "ファイル '$filePath' をアップロードしました。"
+                  } else {
+                      Write-Host "ファイル '$filePath' が見つかりません。"
+                  }
+              }
+          }
+
+      - name: データの取得(Entra ID ユーザー情報)
+        shell: pwsh
+        run: |
+          Import-Module Microsoft.Graph.Reports -Force
+          echo "GRAPH_TOKEN is: $GRAPH_TOKEN"
+          $secureToken = ConvertTo-SecureString $env:GRAPH_TOKEN -AsPlainText -Force
+          Connect-MgGraph -AccessToken $secureToken
+
+          # 日付設定
+          $dateStr = $env:TODAY_DATE
+          $school_year = $env:TODAY_SCHOOL_YEAR
+
+          # 出力先のディレクトリを作成（存在しない場合）
+          $outputDir = "$env:ENTRAID_DIR/MgUser/school_year=${school_year}"
+          if (-not (Test-Path -Path $outputDir)) {
+              New-Item -Path $outputDir -ItemType Directory
+          }
+          $outputPath = "$outputDir/${dateStr}_result_Get-MgUser.csv"
+
+          # 全ユーザーを取得しつつ、AssignedLicenses を展開
+          $users = Get-MgUser -Property Id, UserPrincipalName, DisplayName, AssignedLicenses, DeletedDateTime -All | Select-Object -Property Id, UserPrincipalName, DisplayName, DeletedDateTime, @{Name="AssignedLicenses"; Expression={ ($_.AssignedLicenses | ForEach-Object { $_.skuId }) -join "," }}
+          Write-Host "ユーザー情報を取得: $($users.Count) 件"
+
+          # CSVにエクスポート
+          $users | Export-Csv -Path $outputPath -NoTypeInformation -Encoding UTF8
+
+          # Shift-JISエンコーディングに変換して保存
+          $tempContent = Get-Content -Path $outputPath
+          $tempContent | Out-File -FilePath $outputPath -Encoding Shift-JIS
+
+          Disconnect-MgGraph
+
+      - name: SharePointへアップロード(Entra ID ユーザー情報)
+        shell: pwsh
+        run: |
+          $dateStr = $env:TODAY_DATE
+          $school_year = $env:TODAY_SCHOOL_YEAR
+
+          # フォルダ名とそれに対応するファイルパス
+          $foldersAndFiles = @(
+            @{ name = "MgUser"; file = "${dateStr}_result_Get-MgUser.csv" }
+          )
+
+          # フォルダを作成する関数
+          function Create-FolderRecursively {
+              param (
+                  [string]$folderPath
+              )
+              $parts = $folderPath.TrimStart("/").Split('/')
+              $currentPath = "/sites/$env:SITE_NAME/$env:DOC_LIB"
+
+              foreach ($part in $parts) {
+                  $currentPath = "$currentPath/$part"
+                  $encodedPath = [uri]::EscapeDataString($currentPath.Trim('/'))
+                  $checkUrl = "https://$env:AZURE_TENANT_NAME.sharepoint.com/sites/$env:SITE_NAME/_api/web/GetFolderByServerRelativeUrl('$encodedPath')"
+                  $createUrl = "https://$env:AZURE_TENANT_NAME.sharepoint.com/sites/$env:SITE_NAME/_api/web/folders"
+
+                  try {
+                      # フォルダが存在するか確認
+                      Invoke-RestMethod -Uri $checkUrl -Method Get -Headers @{ Authorization = "Bearer $env:SHAREPOINT_TOKEN"; "Accept" = "application/json;odata=verbose" }
+                  } catch {
+                      # フォルダが存在しない場合は作成
+                      Write-Host "フォルダ '$currentPath' を作成しています..."
+                      $body = @{ "__metadata" = @{ "type" = "SP.Folder" }; "ServerRelativeUrl" = $currentPath } | ConvertTo-Json
+                      Invoke-RestMethod -Uri $createUrl -Method Post -Headers @{ Authorization = "Bearer $env:SHAREPOINT_TOKEN"; "Accept" = "application/json;odata=verbose"; "Content-Type" = "application/json;odata=verbose" } -Body $body
+                  }
+              }
+          }
+
+          # ファイルとフォルダの処理
+          foreach ($item in $foldersAndFiles) {
+              $name = $item.name
+              $filePath = "$env:ENTRAID_DIR/$name/school_year=${school_year}/$($item.file)"
+              $fileName = [System.IO.Path]::GetFileName($filePath)
+              $folder = "/$env:ENTRAID_DIR/$name/school_year=${school_year}"
+
+              # フォルダを1つずつ作成
+              Create-FolderRecursively -folderPath $folder
+
+              $uploadUrl = "https://$env:AZURE_TENANT_NAME.sharepoint.com/sites/$env:SITE_NAME/_api/web/GetFolderByServerRelativeUrl('/sites/$env:SITE_NAME/$env:DOC_LIB$folder')/Files/add(url='$fileName',overwrite=true)"
+
+              # ファイルの存在を確認してアップロード
+              if (Test-Path $filePath) {
+                  $fileContent = [System.IO.File]::ReadAllBytes($filePath)
+                  Invoke-RestMethod -Uri $uploadUrl -Method Post -Headers @{ Authorization = "Bearer $env:SHAREPOINT_TOKEN"; "Accept" = "application/json;odata=verbose" } -Body $fileContent -ContentType "application/octet-stream"
+                  Write-Host "ファイル '$filePath' をアップロードしました。"
+              } else {
+                  Write-Host "ファイル '$filePath' が見つかりません。"
+              }
+          }

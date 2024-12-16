@@ -1,0 +1,94 @@
+name: CI
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      # Checkout repository
+      - uses: actions/checkout@v4
+
+      # Markdown linting step
+      - name: Run markdown lint
+        run: |
+          echo "Installing remark-cli module..."
+          npm install remark-cli remark-preset-lint-consistent
+
+          echo "Performing Markdown linting..."
+          # Run remark and capture output
+          OUTPUT=$(npx remark . --use remark-preset-lint-consistent || true)
+
+          # Display the output
+          echo "$OUTPUT"
+
+          # Check for errors in the output
+          if echo "$OUTPUT" | grep -q "error"; then
+              echo "Error level issues found in Markdown linting. Failing the workflow."
+              exit 1
+          else
+              echo "No error level issues found in Markdown linting."
+          fi
+
+      # PowerShell linting step
+      - name: Run PowerShell lint
+        shell: pwsh
+        run: |
+          # Check if PSScriptAnalyzer is installed
+          Write-Host "Checking if PSScriptAnalyzer module is installed..."
+          if (-not (Get-Module -ListAvailable -Name PSScriptAnalyzer)) {
+              Write-Host "PSScriptAnalyzer is not installed. Installing..."
+              Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser
+          } else {
+              Write-Host "PSScriptAnalyzer is already installed."
+          }
+
+          # Import the PSScriptAnalyzer module
+          Write-Host "Importing PSScriptAnalyzer module..."
+          Import-Module -Name PSScriptAnalyzer -Force
+
+          # Find all .ps1 files
+          Write-Host "Looking for .ps1 files to analyze..."
+          $files = Get-ChildItem -Path . -Recurse -Filter "*.ps1"
+
+          # Initialize a flag to track if any errors occur
+          $hasErrors = $false
+
+          if ($files.Count -eq 0) {
+              Write-Host "No .ps1 files found in the directory."
+          } else {
+              Write-Host "Found $($files.Count) .ps1 files. Starting analysis..."
+              foreach ($file in $files) {
+                  try {
+                      Write-Host "Analyzing file: $($file.FullName)"
+                      Invoke-ScriptAnalyzer -Path $file.FullName -Recurse
+                  } catch {
+                      Write-Host "Error analyzing file: $($file.FullName)"
+                      Write-Host $_
+                      # Set the error flag to true
+                      $hasErrors = $true
+                  }
+              }
+              Write-Host "Analysis completed."
+          }
+
+          # If any errors occurred, exit with a non-zero status
+          if ($hasErrors) {
+              Write-Host "Errors were detected during PowerShell linting."
+              exit 1
+          }
+
+      # YAML lint
+      - name: Run YAML lint
+        shell: bash
+        run: |
+          files=$(find ./.github/workflows -name "*.yml" -o -name "*.yaml")
+          if [-z "$files"]; then
+            echo "No YAML files found. Skipping yamllint."
+          else
+            echo "$files" | xargs yamllint
+          fi
