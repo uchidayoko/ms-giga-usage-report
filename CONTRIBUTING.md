@@ -6,11 +6,11 @@
 
 次のIssueを受け付けています。
 
-- 内容に対する質問 => [こちらから質問できます](https://github.com/ucd-tcc/ms-device-usage-report/issues/new?template=question.md)
-- 内容のエラーや問題の報告 => [こちらからバグ報告できます](https://github.com/ucd-tcc/ms-device-usage-report/issues/new?template=bug_report.md)
-- 解説の改善を提案 => [こちらから提案できます](https://github.com/ucd-tcc/ms-device-usage-report/issues/new?template=feature_request.md)
+- 内容に対する質問 => [こちらから質問できます](https://github.com/uchidayoko/ms-giga-usage-report/issues/new?template=question.md)
+- 内容のエラーや問題の報告 => [こちらからバグ報告できます](https://github.com/uchidayoko/ms-giga-usage-report/issues/new?template=bug_report.md)
+- 解説の改善を提案 => [こちらから提案できます](https://github.com/uchidayoko/ms-giga-usage-report/issues/new?template=feature_request.md)
 
-[その他のIssue](https://github.com/ucd-tcc/ms-device-usage-report/issues/new?template=other.md)も歓迎しています。
+[その他のIssue](https://github.com/uchidayoko/ms-giga-usage-report/issues/new?template=other.md)も歓迎しています。
 
 <br>
 
