@@ -367,7 +367,7 @@ TOTPアプリケーション（Microsoft Authenticator等）を用いた二要�
 ### 6.  **GitHubリポジトリの内容をローカルにクローン**  
 Windows PowerShellで以下のコマンドを任意の場所で実行します。
 ```shell
-git clone https://github.com/{~}/ms-giga-usage-report.git
+git clone https://github.com/uchidayoko/ms-giga-usage-report.git
 ``` 
 
 ### 7. 設定ファイルの編集
