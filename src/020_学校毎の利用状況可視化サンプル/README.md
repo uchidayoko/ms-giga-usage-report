@@ -18,7 +18,7 @@ Microsoft 365 学校毎の利用状況可視化サンプルのPBITファイル�
 
 本ガイドは、Microsoft 365 学校毎の利用状況可視化サンプルを閲覧するユーザーが対象です。  
 Microsoft 365 学校毎の利用状況可視化サンプルでは、データ収集の対象となるユーザーの所属やIDなどの情報を匿名化せずに利用します。  
-そのため、システム全体の管理者など、テナント全所属者に関する情報の閲覧権限を持ったユーザーのみの利用が推奨されます。
+そのため、システム全体の管理者など、テナント全所属者に関する情報の閲覧権限を持ったユーザーのみの利用を推奨します。
 
 ## 💻 概要
 
@@ -35,13 +35,22 @@ graph BT
         usageReportSetting["<div style='text-align: left;'><b>利用状況レポートの<br>匿名化設定</b></div>"]
         style usageReportSetting fill:#F6F8FA,stroke:#565656,stroke-width:1px,color:#565656
 
+        UserData["<div style='text-align: left;'><b>Entra ID ユーザー情報</b></div>"]
+        style UserData fill:#F6F8FA,stroke:#565656,stroke-width:1px,color:#565656
+
         subgraph SharePoint ["<b>SharePoint Online</b>"]
-            usageRecords[("<div style='text-align: left;'><b>M365UsageRecords</b><br>利用状況レポート等の<br>データを保存</div>")]
-            style usageRecords fill:#F6F8FA,stroke:#565656,stroke-width:1px,color:#565656
+            subgraph SharePointSite ["<b>M365UsageRecords サイト</b>"]
+                roster[("<div style='text-align: left;'><b>M365名簿(Roster)</b><br>ユーザーの所属情報<br>を記載したExcelファイル</div>")]
+                style roster fill:#F6F8FA,stroke:#565656,stroke-width:1px,stroke-dasharray:5,color:#565656
+
+                usageRecords[("<div style='text-align: left;'><b>M365UsageRecords</b><br>利用状況レポートのデータ<br>等を記載したCSVファイル</div>")]
+                style usageRecords fill:#F6F8FA,stroke:#565656,stroke-width:1px,stroke-dasharray:5,color:#565656
+            end
+            style SharePointSite fill:#F6F8FA,stroke:#565656,stroke-width:2px,color:#565656
         end
         style SharePoint fill:#14858d,stroke:#565656,stroke-width:2px,color:#fff
 
-        subgraph PowerBIService ["<b>Power BI サービス</b>"]
+        subgraph PowerBIService ["<b><br>Power BI サービス</b>"]
             powerBIReport["<div style='text-align: left;'><b>Power BI レポート</b><br>レポートを表示し<br>データを自動更新</div>"]
             style powerBIReport fill:#F6F8FA,stroke:#565656,stroke-width:1px,color:#565656
         end
@@ -52,8 +61,8 @@ graph BT
 
     subgraph GitHub ["<div style='font-size:24px;'><b>GitHub</b></div>"]
         subgraph githubRepo ["<b>GitHub リポジトリ</b>"]
-            githubActions["<div style='text-align: left;'><b>GitHub Actions</b><br>・利用状況レポート等の<br>　データ取得<br>・SharePoint Onlineサイト<br>　へのデータ自動保存</div>"]
-            style githubActions fill:#F6F8FA,stroke:#565656,stroke-width:1px,stroke-dasharray:8,color:#565656
+            githubActions["<div style='text-align: left;'><b>GitHub Actions</b><br>・利用状況レポート等の<br>　データ取得<br>・SharePoint Online サイト<br>　へのデータ自動保存</div>"]
+            style githubActions fill:#F6F8FA,stroke:#565656,stroke-width:1px,stroke-dasharray:5,color:#565656
         end
         style githubRepo fill:#F6F8FA,stroke:#565656,stroke-width:2px,color:#565656
     end
@@ -62,21 +71,25 @@ graph BT
     user["<div style='text-align: left;'><b>レポート利用者</b><br>Power BI レポートを利用</div>"]
     style user fill:#565656,stroke:#565656,stroke-width:2px,color:#fff
 
+    powerBIReport -->|データを参照| SharePointSite
     GitHub -->|データを取得| usageReport
     GitHub -->|データを取得| usageReportSetting
+    GitHub -->|データを取得| UserData
     GitHub -->|データを保存| usageRecords
-    powerBIReport -->|データを参照| usageRecords
+    user -->|作成と<br>アップロード| roster
     user -->|レポートを閲覧| powerBIReport
     linkStyle 0 stroke:#565656, stroke-width:1.5px;
     linkStyle 1 stroke:#565656, stroke-width:1.5px;
     linkStyle 2 stroke:#565656, stroke-width:1.5px;
     linkStyle 3 stroke:#565656, stroke-width:1.5px;
     linkStyle 4 stroke:#565656, stroke-width:1.5px;
+    linkStyle 5 stroke:#565656, stroke-width:1.5px;
+    linkStyle 6 stroke:#565656, stroke-width:1.5px;
 ```
 
-**【レポート画面】　★残　画像差し替え**
+**【レポート画面】**
 
-|<img src="images/Report_010_Explanation.jpg" width="600">|
+|<img src="images/Report_020_Explanation.png" width="600">|
 |---------|
 
 画像の番号ごとにレポートの概要を説明します。
@@ -111,7 +124,7 @@ graph BT
 
 Microsoft 365 学校毎の利用状況可視化サンプルを使用するには以下の前提条件を満たす必要があります。
 
-1. **データ蓄積機能の構築**  
+1. **環境構築**  
    テナントのシステム管理者によって、 [環境構築手順](/README.md#-%E7%92%B0%E5%A2%83%E6%A7%8B%E7%AF%89%E6%89%8B%E9%A0%86) が完了していることを確認してください。
 
 1. **Microsoft 365 アカウント**  
@@ -121,14 +134,14 @@ Microsoft 365 学校毎の利用状況可視化サンプルを使用するには
    本プロジェクトのレポートを活用するためには、最低でもMicrosoft 365 A1ライセンスが必要です。  
 
 3. **インターネット接続**  
-   Power BI Desktop からデータソースとなる SharePoint Online へのアクセスやPower BI サービスのアクセスにインターネット接続が必須です。
+   Power BI Desktop からデータソースとなる  Online へのアクセスやPower BI サービスのアクセスにインターネット接続が必須です。
 
 4. **Power BI Desktop のインストール**  
    PCに Power BI Desktop がインストールされていることを確認してください。  
    詳細は[こちら（Power BI Desktop の取得 - Power BI | Microsoft Learn）<img src="images/link-external.svg">](https://learn.microsoft.com/ja-jp/power-bi/fundamentals/desktop-get-the-desktop) の手順に従ってください。  
 
 > [!IMPORTANT]
-> + インストールのための [最小要件（Power BI Desktop の取得 - Power BI | Microsoft Learn）<img src="images/link-external.svg">](https://learn.microsoft.com/ja-jp/power-bi/fundamentals/desktop-get-the-desktop#minimum-requirements) を確認して下さい。
+> + インストールのための [最小要件（Power BI Desktop の取得 - Power BI | Microsoft Learn）<img src="images/link-external.svg">](https://learn.microsoft.com/ja-jp/power-bi/fundamentals/desktop-get-the-desktop#minimum-requirements) を確認してください。
 > + 端末のメモリ (RAM) が 4 GB 以下だと動作しない可能性があります。
 
 > [!NOTE]
@@ -140,7 +153,8 @@ Microsoft 365 学校毎の利用状況可視化サンプルを使用するには
    SharePoint Online サイト上のデータソースへのアクセス権限を持っていることを確認してください。
 
 > [!NOTE]
-> + データソースとなるサイトのURLは、[環境構築手順　8. 動作確認](/README.md#8-%E5%8B%95%E4%BD%9C%E7%A2%BA%E8%AA%8D) に記載されています。
+> + データソースとなるサイトのURLは、[環境構築手順　9. 動作確認](/README.md#9-%E5%8B%95%E4%BD%9C%E7%A2%BA%E8%AA%8D) に記載されています。
+> + アクセス権限が無い場合は [データソースへのアクセス権設定](/README.md#-%E3%83%87%E3%83%BC%E3%82%BF%E3%82%BD%E3%83%BC%E3%82%B9%E3%81%B8%E3%81%AE%E3%82%A2%E3%82%AF%E3%82%BB%E3%82%B9%E6%A8%A9%E8%A8%AD%E5%AE%9A) を実施してください。
 
 ## 📥 事前準備
 
@@ -150,9 +164,13 @@ Microsoft 365 学校毎の利用状況可視化サンプルを使用するには
 以下に記載の手順で作成してください。
 
 <details>
-<summary>　クリックして詳細表示　★残対応有り</summary>
+<summary>　クリックして詳細表示</summary>
 
-> 1. [サンプルファイル](名簿サンプル/2024-04-01_M365名簿.xlsx) をダウンロードします。　★本番環境が出来てから 画像を調整
+> 1. [サンプルファイル<img src="images/link-external.svg">](https://github.com/uchidayoko/ms-giga-usage-report/blob/main/src/020_%E5%AD%A6%E6%A0%A1%E6%AF%8E%E3%81%AE%E5%88%A9%E7%94%A8%E7%8A%B6%E6%B3%81%E5%8F%AF%E8%A6%96%E5%8C%96%E3%82%B5%E3%83%B3%E3%83%97%E3%83%AB/%E5%90%8D%E7%B0%BF%E3%82%B5%E3%83%B3%E3%83%97%E3%83%AB/2024-04-01_M365%E5%90%8D%E7%B0%BF.xlsx) をダウンロードします。
+> 
+> |<img src="images/Create_Roster_1.jpg" width="600">|
+> |---------|
+> 
 > 2. 名簿作成時の日付でファイル名を「yyyy-mm-dd_M365名簿.xlsx」に変更します。
 >
 >      - yyyy-mm-ddに名簿作成時の日付を入力します。  
@@ -169,17 +187,21 @@ Microsoft 365 学校毎の利用状況可視化サンプルを使用するには
 > |---|---|---|---|
 > | **年度** | 名簿の対象となる年度<br>数字4桁 | 2025　など |  |
 > | **所属名** | 対象者の所属 | ダミー小学校<br>教育委員会　など |  |
-> | **M365ID** | 対象者のMicrosoft 365 ID | aaaaa@bbb.onmicrosoft.com<br>xxx@yyy.ed.jp　など |  |
-> | **氏名** | 対象者の氏名 | 内田　洋子<br>youko-uchida　など | 空欄でも構いません |
+> | **M365ID** | 対象者のMicrosoft 365 ID | aaaaa@bbb.onmicrosoft.com<br>xxx@yyy.ed.jp　など | 同一年度内で重複が無いようにしてください。<br>兼任者の場合はどちらか一方を記載してください。 |
+> | **氏名** | 対象者の氏名 | 内田　洋子<br>youko-uchida　など | 現在はレポートに表示していないため、空欄でも構いません。 |
 > | **役割** | 対象者の役割・肩書 | 児童生徒<br>教員<br>全体管理者　のいずれか |  |
-> | **学級名** | 対象者の所属する学級名 | 1年1組<br>ひまわり学級 など | 相当するものがなければ空欄でも構いません<br>運用負荷を考慮して一律「未設定」という文言も可能です |
+> | **学級名** | 対象者の所属する学級名 | 1年1組<br>ひまわり学級 など | 相当するものがなければ空欄でも構いません。<br>運用負荷を考慮して一律「未設定」という文言も可能です。 |
 > 
 > |<img src="images/Create_Roster_3.jpg" width="600">|
 > |---------|
 
 </details>
 
-> [!Note]
+> [!CAUTION]
+> + 同一年度内で「M365ID」が重複している場合は、名簿ファイル内で上にある情報が取得されます。
+> + 兼任者についてはどちらか一方を記載してください。
+
+> [!NOTE]
 > **レポートと名簿ファイルの関連について**  
 > + レポートでは、年度毎の最新の名簿ファイルにある情報でデータが集計されます。
 > + 各列の情報は、レポートの以下の部分に対応します。
@@ -189,13 +211,12 @@ Microsoft 365 学校毎の利用状況可視化サンプルを使用するには
 > | 年度 | 集計対象の年度と名簿情報を紐づけます。 |
 > | 所属名 | 学校によるフィルターや学校毎の集計に利用します。 |
 > | M365ID | Microsoft 365 利用データと名簿情報を紐づけます。 |
-> | 氏名 | レポート上には表示しません。 |
+> | 氏名 | 現在公開中のバージョンではレポート上に表示しません。 |
 > | 役割 | 役割によるフィルターや役割毎の集計に利用します。 |
 > | 学級名 | 学級毎の集計に利用します。<br>空欄や任意の値を入れるとその値で表示されます。（下図参照） |
 > 
-> |<img src="images/Class_Name.jpg" width="600">|
+> |<img src="images/Class_Name_1.jpg" width="600">|
 > |---------|
->
 
 ### 2. 名簿ファイル格納場所の準備
 
@@ -207,11 +228,11 @@ Microsoft 365 学校毎の利用状況可視化サンプルを使用するには
 
 > 1. データソースとなるShare Point Online サイトにアクセスします。
 >
->    - サイトのURLは、[環境構築手順　8. 動作確認](/README.md#8-%E5%8B%95%E4%BD%9C%E7%A2%BA%E8%AA%8D) に記載されています。
+>    - サイトのURLは、[環境構築手順　9. 動作確認](/README.md#9-%E5%8B%95%E4%BD%9C%E7%A2%BA%E8%AA%8D) に記載されています。
 > 
 > 2. 左側のタブから、 [ドキュメント] を選択します。
 > 
-> |<img src="images/Create_SharePoint_Folders.jpg" width="600">|
+> |<img src="images/Create_SharePoint_Folders_1.jpg" width="600">|
 > |---------|
 >
 > 3. [＋新規] > [フォルダー] をクリックしてフォルダーの作成画面を開きます。
@@ -260,7 +281,7 @@ Microsoft 365 学校毎の利用状況可視化サンプルを使用するには
 
 > 1. 前の手順で作成した「school_year=yyyy」フォルダーをクリックして開きます。
 > 
-> |<img src="images/Upload_Roster.jpg" width="600">|
+> |<img src="images/Upload_Roster_1.jpg" width="600">|
 > |---------|
 >
 > 2. [アップロード] > [ファイル] をクリックします。
@@ -288,9 +309,12 @@ Microsoft 365 学校毎の利用状況可視化サンプルを使用するには
 レポートを利用開始するために、以下の手順でテンプレートをダウンロードできます。
 
 <details>
-<summary>　クリックして詳細表示　★残対応有り</summary>
+<summary>　クリックして詳細表示</summary>
 
-> 1. [本件のマスタリポジトリ](test.pbit) にアクセスし、対象のPBITファイルをダウンロードします。★本番環境が出来てから 画像とリンクを調整
+> 1. [テンプレートファイル<img src="images/link-external.svg">](https://github.com/uchidayoko/ms-giga-usage-report/blob/main/src/020_%E5%AD%A6%E6%A0%A1%E6%AF%8E%E3%81%AE%E5%88%A9%E7%94%A8%E7%8A%B6%E6%B3%81%E5%8F%AF%E8%A6%96%E5%8C%96%E3%82%B5%E3%83%B3%E3%83%97%E3%83%AB/02_%E5%AD%A6%E6%A0%A1%E6%AF%8E%E3%81%AE%E7%AB%AF%E6%9C%AB%E5%88%A9%E7%94%A8%E7%8A%B6%E6%B3%81%E3%83%AC%E3%83%9D%E3%83%BC%E3%83%88.pbit) をダウンロードします。
+> 
+> |<img src="images/Download_Template_File_1.jpg" width="600">|
+> |---------|
 
 </details>
 
@@ -307,45 +331,55 @@ Power BI Desktop および Power BI サービスの準備に関する手順は�
 ## 🔄 名簿情報の更新方法
 
 > [!IMPORTANT]
-> 名簿情報に変更が生じた場合、名簿ファイルを新規作成してSharePoint Online サイトに追加する必要があります。
-> + **転出入等**  
->   転出入等の事由により年度の途中で名簿ファイルの情報に変更が生じた場合は、名簿ファイルを新規作成してShare Point Online サイトの「school_year=yyyy」フォルダに格納してください。  
->   例）  2025年4月1日に「2025-04-01_M365名簿.xlsx」を作成している状態で、2025年9月1日に児童生徒の転出入があった場合、  
-> 　　 別途「2025-09-01_M365名簿.xlsx」を作成し、Share Point Online サイトの「school_year=2025」フォルダに追加します。
+> **年度の切り替わりにおける対応**  
+> 年度が切り替わる場合、名簿ファイルを新規作成してSharePoint Online サイトに追加する必要があります。  
+> SharePoint Online サイトに「school_year=yyyy」フォルダを作成し、新年度の情報を記載した名簿ファイルを格納してください。
 > 
-> |<img src="images/Update_Roster_2.jpg" width="600">|
-> |---------|
->
-> + **年度の切り替わり**  
->   SharePoint Online サイトに「school_year=yyyy」フォルダを作成し、新年度の情報を記載した名簿ファイルを格納してください。  
->   例）  2026年度になったら、Share Point Online サイトに「school_year=2026」というフォルダを新規作成します。  
+> 例）  2026年度になったら、Share Point Online サイトに「school_year=2026」というフォルダを新規作成します。  
 > 　　 2026年度の名簿ファイル「2026-04-01_M365名簿.xlsx」も新規作成し、「school_year=2026」フォルダに格納します。
 > 
-> |<img src="images/Update_Roster.jpg" width="600">|
+> |<img src="images/Update_Roster_1.jpg" width="600">|
 > |---------|
 >
 > 操作手順は上述「事前準備」の以下の手順を参考にしてください。
 > + [1. 名簿ファイルの作成](#1-名簿ファイルの作成)
 > + [2. 名簿ファイル格納場所の準備](#2-名簿ファイル格納場所の準備)
 > + [3. 名簿ファイルのアップロード](#3-名簿ファイルのアップロード)
-
-> [!NOTE]
+>
+> **※本システム運用開始時の留意点**  
+> 本システム運用開始時には過去26日分のデータが読み込まれます。  
+> それらのデータを分析対象としたい場合は、該当時点の名簿ファイルが必要になります。
+> 
+> **※名簿ファイルが存在しない場合のエラー表示**   
 > 集計対象の年度の名簿ファイルが存在しない場合、レポート画面にエラーが表示されます。  
 > エラーが表示された場合は、名簿ファイルがSharePoint Online サイトに登録されていることを確認してください。
 > 
-> |<img src="images/Roster_Error.jpg" width="600">|
+> |<img src="images/Roster_Error_1.jpg" width="600">|
+> |---------|
+
+> [!NOTE]
+> **転出入等の対応**  
+> 転出入等の事由により年度の途中で名簿ファイルの情報に変更が生じた場合は、名簿ファイルを新規作成することでレポートに反映することができます。  
+> ただし、レポートへの反映が不要な場合は作業する必要はありません。  
+>
+> 新規作成した名簿ファイルは、Share Point Online サイトの「school_year=yyyy」フォルダに格納してください。
+> 
+> 例）  2025年4月1日に「2025-04-01_M365名簿.xlsx」を作成している状態で、2025年9月1日に児童生徒の転出入があった場合、  
+> 　　 別途「2025-09-01_M365名簿.xlsx」を作成し、Share Point Online サイトの「school_year=2025」フォルダに追加します。
+> 
+> |<img src="images/Update_Roster_2.jpg" width="600">|
 > |---------|
 
 ## ⚠ 注意事項
 
 > [!CAUTION]
-> + データを取り込んだレポートファイル (.pbix) は第三者に共有しないで下さい。含まれる情報が意図せず閲覧されてしまいます。
+> + データを取り込んだレポートファイル (.pbix) は第三者に共有しないでください。含まれる情報が意図せず閲覧されてしまいます。
 
 ## 📚 関連情報
 
 本プロジェクトに関連するドキュメント
 
-- [Power BI Desktop と Power BI サービスの比較 - Power BI | Microsoft Learn<img src="images/link-external.svg">](https://learn.microsoft.com/ja-jp/power-bi/fundamentals/service-service-vs-desktop)
 - [Power BI Desktop のインストールガイド（Power BI Desktop の取得 - Power BI | Microsoft Learn）<img src="images/link-external.svg">](https://learn.microsoft.com/ja-jp/power-bi/fundamentals/desktop-get-the-desktop)
+- [Power BI Desktop の起動に関する問題を解決する - Power BI | Microsoft Learn<img src="images/link-external.svg">](https://learn.microsoft.com/ja-jp/power-bi/connect-data/desktop-error-launching-desktop)
 
 [Back to top](#top)

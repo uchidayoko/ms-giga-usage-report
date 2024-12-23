@@ -17,7 +17,7 @@ jobs:
       AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
 
     steps:
-      - name: Set env
+      - name: 環境変数の設定
         shell: bash
         run: |
           # SharePointサイト名
@@ -60,7 +60,7 @@ jobs:
           ## Entra ID ユーザー情報
           echo "ENTRAID_DIR=Roster/MsGraph/UnConcealed" >> $GITHUB_ENV
 
-      - name: Install PowerShell
+      - name: PowerShellのインストール
         run: |
           sudo apt-get update
           sudo apt-get install -y powershell
@@ -361,9 +361,8 @@ jobs:
               New-Item -Path $outputDir -ItemType Directory
           }
           $outputPath = "$outputDir/${dateStr}_result_Get-MgUser.csv"
-
           # 全ユーザーを取得しつつ、AssignedLicenses を展開
-          $users = Get-MgUser -Property Id, UserPrincipalName, DisplayName, AssignedLicenses, DeletedDateTime -All | Select-Object -Property Id, UserPrincipalName, DisplayName, DeletedDateTime, @{Name="AssignedLicenses"; Expression={ ($_.AssignedLicenses | ForEach-Object { $_.skuId }) -join "," }}
+          $users = Get-MgUser -Property Id, UserPrincipalName, DisplayName, AssignedLicenses, AccountEnabled -All | Select-Object -Property Id, UserPrincipalName, DisplayName, AccountEnabled, @{Name="AssignedLicenses"; Expression={ ($_.AssignedLicenses | ForEach-Object { $_.skuId }) -join "," }}
           Write-Host "ユーザー情報を取得: $($users.Count) 件"
 
           # CSVにエクスポート

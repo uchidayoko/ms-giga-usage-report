@@ -16,6 +16,11 @@ $logFile = "$logFolder\$date`_log.txt"
 $paramsFilePath = ".\params.json"
 $outputsFilePath = ".\outputs.json"
 $runningScript = ""
+$githubLogin = $false
+$azureCLILogin = $false
+$azureAccountConnection = $false
+$mgGraphConnection = $false
+$spoServiceConnection = $false
 
 
 # 関数定義
@@ -58,7 +63,8 @@ try{
     # params.json を読み込み、オブジェクトに変換
     Write-Log -Message "Loading params.json and converting it to an object."
     $params = Get-Content -Path $paramsFilePath | ConvertFrom-Json
-    $tenantName = $params.tenantName
+    
+    $tenantName = ($params.sharepointDomain -split "\.")[0]
     $adminUrl = "https://$tenantName-admin.sharepoint.com"
 
     # GitHubアカウントにログイン
@@ -72,6 +78,7 @@ try{
         throw "GitHub CLI login failed with exit code $exitCode"
     }
     else {
+        $githubLogin = $true
         Write-Log -Message "GitHub CLI login succeeded."
     }
 
@@ -85,6 +92,7 @@ try{
         if ($exitCode -ne 0) {
             throw "Azure CLI login failed with exit code $exitCode"
         } else {
+            $azureCLILogin = $true
             Write-Log -Message "Azure CLI login succeeded."
         }
     }
@@ -97,6 +105,7 @@ try{
             if ($LASTEXITCODE -ne 0) {
                 throw "Failed to connect to Azure account."
             }
+            $azureAccountConnection = $true
             Write-Log -Message "Connected to Azure account successfully."
         } 
         catch {
@@ -112,6 +121,7 @@ try{
             if ($LASTEXITCODE -ne 0) {
                 throw "Failed to connect to Microsoft Graph."
             }
+            $mgGraphConnection = $true
             Write-Log -Message "Connected to Microsoft Graph successfully."
         } 
         catch {
@@ -128,6 +138,7 @@ try{
             Write-Log -Message "Failed to connect to SharePoint Online Management Shell."
             throw "SharePoint Online Management Shell connection failed."
         } else {
+            $spoServiceConnection = $true
             Write-Log -Message "Connected to SharePoint Online Management Shell successfully."
         }
     }
@@ -160,7 +171,7 @@ try{
     $runningScript = "05_Create-SharePointSite\Create-SharepointSite.ps1"
     if($outputs.deployProgress."02" -eq "completed" -and $outputs.deployProgress."03" -eq "completed" -and $outputs.deployProgress."04" -eq "completed" -and $outputs.deployProgress."05" -ne "completed") {
         Write-Log -Message "Creating SharePoint site."
-        .\05_Create-SharePointSite\Create-SharepointSite.ps1 -applicationId $outputs.appId -securityGroupObjectId $outputs.securityGroupObjectId -tenantName $params.tenantName
+        .\05_Create-SharePointSite\Create-SharepointSite.ps1 -applicationId $outputs.appId -securityGroupObjectId $outputs.securityGroupObjectId -sharepointDomain $params.sharepointDomain
     }
 
     # outputsの再読み込み
@@ -170,7 +181,7 @@ try{
     $runningScript = "06_Exec-GitHubActions\Exec-GitHubActions.ps1"
     if($outputs.deployProgress."05" -eq "completed") {
         Write-Log -Message "Adding GitHub secret and executing GitHub Actions workflows."
-        .\06_Exec-GitHubActions\Exec-GitHubActions.ps1 -tenantId $outputs.tenantId -tenantName $params.tenantName -applicationId $outputs.appId -githubOrganizationName $params.githubOrganizationName -githubRepositoryName $params.githubRepositoryName
+        .\06_Exec-GitHubActions\Exec-GitHubActions.ps1 -tenantId $outputs.tenantId -tenantName $tenantName -applicationId $outputs.appId -githubOrganizationName $params.githubOrganizationName -githubRepositoryName $params.githubRepositoryName
     }
 
     Write-Log -Message "Deployment is complete."
@@ -182,24 +193,34 @@ catch{
 }
 finally {
     # GitHubアカウントからログアウト
-    Write-Log -Message "Logging out from GitHub."
-    gh auth logout
+    if ($githubLogin) {
+        Write-Log -Message "Logging out from GitHub."
+        gh auth logout
+    }
 
     # Azure CLIからログアウト
-    Write-Log -Message "Logging out from Azure CLI."
-    az logout
-
+    if ($azureCLILogin) {
+        Write-Log -Message "Logging out from Azure CLI."
+        az logout
+    }
+    
     # Azureアカウントへの接続を切断
-    Write-Log -Message "Disconnect from Azure account."
-    Disconnect-AzAccount
+    if ($azureAccountConnection) {
+        Write-Log -Message "Disconnect from Azure account."
+        Disconnect-AzAccount
+    }
 
     # Microsoft Graphへの接続を切断
-    Write-Log -Message "Disconnect from Microsoft Graph."
-    Disconnect-MgGraph
+    if ($mgGraphConnection) {
+        Write-Log -Message "Disconnect from Microsoft Graph."
+        Disconnect-MgGraph
+    }
     
     # SharePoint Online 管理シェルへの接続を切断
-    Write-Log -Message "Disconnect from SPO Service."
-    Disconnect-SPOService
-
+    if ($spoServiceConnection) {
+        Write-Log -Message "Disconnect from SPO Service."
+        Disconnect-SPOService
+    }
+    
     Write-Log -Message "---------------------------------------------"
 }

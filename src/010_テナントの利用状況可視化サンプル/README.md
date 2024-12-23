@@ -40,12 +40,18 @@ graph BT
         style UserData fill:#F6F8FA,stroke:#565656,stroke-width:1px,color:#565656
 
         subgraph SharePoint ["<b>SharePoint Online</b>"]
-            usageRecords[("<div style='text-align: left;'><b>M365UsageRecords</b><br>利用状況レポート等の<br>データを保存</div>")]
-            style usageRecords fill:#F6F8FA,stroke:#565656,stroke-width:1px,color:#565656
+            subgraph SharePointSite ["<b>M365UsageRecords サイト</b>"]
+                roster[("<div style='text-align: left;'><b>MgUser(Roster)</b><br>Entra ID ユーザー情報<br>を記載したCSVファイル</div>")]
+                style roster fill:#F6F8FA,stroke:#565656,stroke-width:1px,stroke-dasharray:5,color:#565656
+
+                usageRecords[("<div style='text-align: left;'><b>M365UsageRecords</b><br>利用状況レポートのデータ<br>等を記載したCSVファイル</div>")]
+                style usageRecords fill:#F6F8FA,stroke:#565656,stroke-width:1px,stroke-dasharray:5,color:#565656
+            end
+            style SharePointSite fill:#F6F8FA,stroke:#565656,stroke-width:2px,color:#565656
         end
         style SharePoint fill:#14858d,stroke:#565656,stroke-width:2px,color:#fff
 
-        subgraph PowerBIService ["<b>Power BI サービス</b>"]
+        subgraph PowerBIService ["<b><br>Power BI サービス</b>"]
             powerBIReport["<div style='text-align: left;'><b>Power BI レポート</b><br>レポートを表示し<br>データを自動更新</div>"]
             style powerBIReport fill:#F6F8FA,stroke:#565656,stroke-width:1px,color:#565656
         end
@@ -56,8 +62,8 @@ graph BT
 
     subgraph GitHub ["<div style='font-size:24px;'><b>GitHub</b></div>"]
         subgraph githubRepo ["<b>GitHub リポジトリ</b>"]
-            githubActions["<div style='text-align: left;'><b>GitHub Actions</b><br>・利用状況レポート等の<br>　データ取得<br>・SharePoint Onlineサイト<br>　へのデータ自動保存</div>"]
-            style githubActions fill:#F6F8FA,stroke:#565656,stroke-width:1px,stroke-dasharray:8,color:#565656
+            githubActions["<div style='text-align: left;'><b>GitHub Actions</b><br>・利用状況レポート等の<br>　データ取得<br>・SharePoint Online サイト<br>　へのデータ自動保存</div>"]
+            style githubActions fill:#F6F8FA,stroke:#565656,stroke-width:1px,stroke-dasharray:5,color:#565656
         end
         style githubRepo fill:#F6F8FA,stroke:#565656,stroke-width:2px,color:#565656
     end
@@ -66,11 +72,12 @@ graph BT
     user["<div style='text-align: left;'><b>レポート利用者</b><br>Power BI レポートを利用</div>"]
     style user fill:#565656,stroke:#565656,stroke-width:2px,color:#fff
 
+    powerBIReport -->|データを参照| SharePointSite
     GitHub -->|データを取得| usageReport
     GitHub -->|データを取得| usageReportSetting
     GitHub -->|データを取得| UserData
     GitHub -->|データを保存| usageRecords
-    powerBIReport -->|データを参照| usageRecords
+    GitHub -->|データを保存| roster
     user -->|レポートを閲覧| powerBIReport
     linkStyle 0 stroke:#565656, stroke-width:1.5px;
     linkStyle 1 stroke:#565656, stroke-width:1.5px;
@@ -78,11 +85,12 @@ graph BT
     linkStyle 3 stroke:#565656, stroke-width:1.5px;
     linkStyle 4 stroke:#565656, stroke-width:1.5px;
     linkStyle 5 stroke:#565656, stroke-width:1.5px;
+    linkStyle 6 stroke:#565656, stroke-width:1.5px;
 ```
 
-**【レポート画面】　★残対応有り　画像差し替え？**
+**【レポート画面】**
 
-|<img src="images/Report_010_Explanation.jpg" width="600">|
+|<img src="images/Report_010_Explanation.png" width="600">|
 |---------|
 
 画像の番号ごとにレポートの概要を説明します。
@@ -114,7 +122,7 @@ graph BT
 
 Microsoft 365 テナント全体の利用状況可視化サンプルを使用するには以下の前提条件を満たす必要があります。
 
-1. **データ蓄積機能の構築**  
+1. **環境構築**  
    テナントのシステム管理者によって、 [環境構築手順](/README.md#-%E7%92%B0%E5%A2%83%E6%A7%8B%E7%AF%89%E6%89%8B%E9%A0%86) が完了していることを確認してください。
 
 2. **Microsoft 365 アカウント**  
@@ -143,7 +151,8 @@ Microsoft 365 テナント全体の利用状況可視化サンプルを使用す
    SharePoint Online サイト上のデータソースへのアクセス権限を持っていることを確認してください。
 
 > [!NOTE]
-> + データソースとなるサイトのURLは、[環境構築手順　8. 動作確認](/README.md#8-%E5%8B%95%E4%BD%9C%E7%A2%BA%E8%AA%8D) に記載されています。
+> + データソースとなるサイトのURLは、[環境構築手順　9. 動作確認](/README.md#9-%E5%8B%95%E4%BD%9C%E7%A2%BA%E8%AA%8D) に記載されています。
+> + アクセス権限が無い場合は [データソースへのアクセス権設定](/README.md#-%E3%83%87%E3%83%BC%E3%82%BF%E3%82%BD%E3%83%BC%E3%82%B9%E3%81%B8%E3%81%AE%E3%82%A2%E3%82%AF%E3%82%BB%E3%82%B9%E6%A8%A9%E8%A8%AD%E5%AE%9A) を実施してください。
 
 ## 📥 事前準備
 
@@ -152,9 +161,12 @@ Microsoft 365 テナント全体の利用状況可視化サンプルを使用す
 レポートを利用開始するために、以下の手順でテンプレートをダウンロードできます。
 
 <details>
-<summary>　クリックして詳細表示　★残対応有り</summary>
+<summary>　クリックして詳細表示</summary>
 
-> 1. [本件のマスタリポジトリ<img src="images/link-external.svg">](01_テナント全体の端末利用状況レポート.pbit) にアクセスし、対象のPBITファイルをダウンロードします。★本番環境が出来てから 画像とリンクを調整
+> 1. [テンプレートファイル<img src="images/link-external.svg">](https://github.com/uchidayoko/ms-giga-usage-report/blob/main/src/010_%E3%83%86%E3%83%8A%E3%83%B3%E3%83%88%E3%81%AE%E5%88%A9%E7%94%A8%E7%8A%B6%E6%B3%81%E5%8F%AF%E8%A6%96%E5%8C%96%E3%82%B5%E3%83%B3%E3%83%97%E3%83%AB/01_%E3%83%86%E3%83%8A%E3%83%B3%E3%83%88%E5%85%A8%E4%BD%93%E3%81%AE%E7%AB%AF%E6%9C%AB%E5%88%A9%E7%94%A8%E7%8A%B6%E6%B3%81%E3%83%AC%E3%83%9D%E3%83%BC%E3%83%88.pbit) をダウンロードします。
+> 
+> |<img src="images/Download_Template_File_1.jpg" width="600">|
+> |---------|
 
 </details>
 
@@ -170,7 +182,7 @@ Microsoft 365 テナント全体の利用状況可視化サンプルを使用す
 > 
 > 2. 画面左下の [サインイン] をクリックします。
 > 
-> |<img src="images/SignIn_Power_BI_Desktop.jpg" width="600">|
+> |<img src="images/SignIn_Power_BI_Desktop_1.jpg" width="600">|
 > |---------|
 > 
 > 3. 画面表示に従い、Microsoft 365 アカウントのメールアドレスを入力します。
@@ -204,7 +216,7 @@ Microsoft 365 テナント全体の利用状況可視化サンプルを使用す
 > 
 > 2. 右上の [サインイン] からPower BI サービスにサインインします。  
 > 
-> |<img src="images/SignIn_Power_BI_Service.jpg" width="600">|
+> |<img src="images/SignIn_Power_BI_Service_1.jpg" width="600">|
 > |---------|
 > 
 > 3. 画面の指示に従いメールアドレスを入力して [送信] します。
@@ -229,7 +241,7 @@ Microsoft 365 A1 / A3 ライセンスの場合は、「Microsoft Fabric Free」�
 
 > 1. サービス画面上の指示に従い、「Microsoft Fabric Free」ライセンスを開始します。
 > 
-> |<img src="images/Setup_Fabric_Free.jpg" width="600">|
+> |<img src="images/Setup_Fabric_Free_1.jpg" width="600">|
 > |---------|
 > |<img src="images/Setup_Fabric_Free_2.jpg" width="600">|
 > |<img src="images/Setup_Fabric_Free_3.jpg" width="600">|
@@ -256,7 +268,7 @@ Microsoft 365 A1 / A3 ライセンスの場合は、「Microsoft Fabric Free」�
 
 > 1. 事前準備でダウンロードしたPBITファイルをダブルクリックし、Power BI Desktop で開きます。  
 > 
-> |<img src="images/Open_Template_File.jpg" width="600">|
+> |<img src="images/Open_Template_File_1.jpg" width="600">|
 > |---------|
 
 </details>
@@ -272,7 +284,7 @@ Microsoft 365 A1 / A3 ライセンスの場合は、「Microsoft Fabric Free」�
 > 
 > | パラメータ | 設定値 |
 > |---------|---------|
-> |SiteUrl| [環境構築手順　8. 動作確認](/README.md#8-%E5%8B%95%E4%BD%9C%E7%A2%BA%E8%AA%8D) に記載されているサイトURL |
+> |SiteUrl| [環境構築手順　9. 動作確認](/README.md#9-%E5%8B%95%E4%BD%9C%E7%A2%BA%E8%AA%8D) に記載されているサイトURL |
 > |SchoolYearRange|3|
 > 
 > - **SiteUrl**：データソースファイルが格納されているSharePoint Online サイトのURLを入力します。  
@@ -280,7 +292,7 @@ Microsoft 365 A1 / A3 ライセンスの場合は、「Microsoft Fabric Free」�
 >  ※ここでは「SchoolYearRange」を既定の 3 に設定します。   
 >  ※本システム運用開始時点では、開始日より約26日前のデータから読み込まれます。
 > 
-> |<img src="images/Setup_Parameters.jpg" width="600">|
+> |<img src="images/Setup_Parameters_1.jpg" width="600">|
 > |---------|
 > 
 > 2. データソースの資格情報設定を求められます。 [Microsoft アカウント] > [サインイン] をクリックし、サインインします。
@@ -311,7 +323,7 @@ Microsoft 365 A1 / A3 ライセンスの場合は、「Microsoft Fabric Free」�
 
 > 1. [ファイル] タブをクリックします。
 > 
-> |<img src="images/Save_Report.jpg" width="600">|
+> |<img src="images/Save_Report_1.jpg" width="600">|
 > |---------|
 > 
 > 2.  [名前を付けて保存] > [このデバイスを参照する] をクリックします。
@@ -340,7 +352,7 @@ Microsoft 365 A1 / A3 ライセンスの場合は、「Microsoft Fabric Free」�
 
 > 1. [ホーム] タブから [発行] をクリックします。
 > 
-> |<img src="images/Publish_Report.jpg" width="600">|
+> |<img src="images/Publish_Report_1.jpg" width="600">|
 > |---------|
 > 
 > 2. 「マイワークスペース」を選択し、 [選択] をクリックして発行を開始します。
@@ -370,7 +382,7 @@ Microsoft 365 A1 / A3 ライセンスの場合は、「Microsoft Fabric Free」�
 
 > 1. Power BI サービスの左側メニューから [マイワークスペース] を選択します。
 > 
-> |<img src="images/Configure_DataSource_Credentials.jpg" width="600">|
+> |<img src="images/Configure_DataSource_Credentials_1.jpg" width="600">|
 > |---------|
 > 
 > 2. 発行したセマンティックモデルの [・・・] > [設定] をクリックし、設定画面を開きます。
@@ -411,7 +423,7 @@ Microsoft 365 A1 / A3 ライセンスの場合は、「Microsoft Fabric Free」�
 以下の手順に従って設定してください。
 
 > [!NOTE]
-> + データ蓄積機能で最新データを取得するタイミングに合わせたスケジュール設定になります。
+> + 環境構築で設定された最新データを取得するタイミングに合わせたスケジュール設定になります。
 
 <details>
 <summary>　クリックして詳細表示</summary>
@@ -426,7 +438,7 @@ Microsoft 365 A1 / A3 ライセンスの場合は、「Microsoft Fabric Free」�
 > |更新の頻度|毎日|
 > |時刻|12:00PM|
 > 
-> |<img src="images/Configure_Scheduled_Refresh.jpg" width="600">|
+> |<img src="images/Configure_Scheduled_Refresh_1.jpg" width="600">|
 > |---------|
 > 
 > 3. [適用] をクリックして、設定を保存します。
@@ -445,7 +457,7 @@ Power BI サービスでデータの手動更新を行い、データ取得の�
 
 > 1. マイワークスペースを開きます。
 > 
-> |<img src="images/Refresh_SemanticModel.jpg" width="600">|
+> |<img src="images/Refresh_SemanticModel_1.jpg" width="600">|
 > |---------|
 > 
 > 2. データソースの資格情報を設定したセマンティックモデルを選択し、更新マーク（🔄）をクリックします。
@@ -473,7 +485,7 @@ Power BI サービスのマイワークスペースからレポートを開い�
 > 1. [https://app.powerbi.com/](https://app.powerbi.com/) にアクセスしてPower BI サービスを開きます。
 > 2. Power BI サービスの左側メニューから [マイワークスペース] を選択します。
 > 
-> |<img src="images/View_Report.jpg" width="600">|
+> |<img src="images/View_Report_1.jpg" width="600">|
 > |---------|
 > 
 > 3. 「01_テナント全体の端末利用状況レポート」という名前のレポートをクリックします。
@@ -504,7 +516,7 @@ Power BI サービスのマイワークスペースからレポートを開い�
 
 > 1. Power BI サービスの左側メニューから [マイワークスペース] を選択します。
 > 
-> |<img src="images/Configure_Parameters.jpg" width="600">|
+> |<img src="images/Configure_Parameters_1.jpg" width="600">|
 > |---------|
 > 
 > 2. セマンティックモデルの [・・・] > [設定] をクリックし、設定画面を開きます。
@@ -535,8 +547,7 @@ Power BI サービスのマイワークスペースからレポートを開い�
 
 本プロジェクトに関連するドキュメント
 
-- [Power BI Desktop と Power BI サービスの比較 - Power BI | Microsoft Learn<img src="images/link-external.svg">](https://learn.microsoft.com/ja-jp/power-bi/fundamentals/service-service-vs-desktop)
 - [Power BI Desktop のインストールガイド（Power BI Desktop の取得 - Power BI | Microsoft Learn）<img src="images/link-external.svg">](https://learn.microsoft.com/ja-jp/power-bi/fundamentals/desktop-get-the-desktop)
-
+- [Power BI Desktop の起動に関する問題を解決する - Power BI | Microsoft Learn<img src="images/link-external.svg">](https://learn.microsoft.com/ja-jp/power-bi/connect-data/desktop-error-launching-desktop)
 
 [Back to top](#top)

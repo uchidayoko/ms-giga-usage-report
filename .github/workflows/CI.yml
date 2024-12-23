@@ -10,85 +10,85 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      # Checkout repository
+      # リポジトリのチェックアウト
       - uses: actions/checkout@v4
 
-      # Markdown linting step
-      - name: Run markdown lint
+      # Markdownのリントステップ
+      - name: Markdownリントの実行
         run: |
-          echo "Installing remark-cli module..."
+          echo "remark-cliモジュールをインストールしています..."
           npm install remark-cli remark-preset-lint-consistent
 
-          echo "Performing Markdown linting..."
-          # Run remark and capture output
+          echo "Markdownのリントを実行しています..."
+          # remarkを実行し、出力をキャプチャ
           OUTPUT=$(npx remark . --use remark-preset-lint-consistent || true)
 
-          # Display the output
+          # 出力を表示
           echo "$OUTPUT"
 
-          # Check for errors in the output
+          # 出力にエラーが含まれているか確認
           if echo "$OUTPUT" | grep -q "error"; then
-              echo "Error level issues found in Markdown linting. Failing the workflow."
+              echo "Markdownリントでエラーレベルの問題が見つかりました。ワークフローを失敗させます。"
               exit 1
           else
-              echo "No error level issues found in Markdown linting."
+              echo "Markdownリントでエラーレベルの問題は見つかりませんでした。"
           fi
 
-      # PowerShell linting step
-      - name: Run PowerShell lint
+      # PowerShellのリントステップ
+      - name: PowerShellリントの実行
         shell: pwsh
         run: |
-          # Check if PSScriptAnalyzer is installed
-          Write-Host "Checking if PSScriptAnalyzer module is installed..."
+          # PSScriptAnalyzerがインストールされているか確認
+          Write-Host "PSScriptAnalyzerモジュールがインストールされているか確認しています..."
           if (-not (Get-Module -ListAvailable -Name PSScriptAnalyzer)) {
-              Write-Host "PSScriptAnalyzer is not installed. Installing..."
+              Write-Host "PSScriptAnalyzerがインストールされていません。インストールしています..."
               Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser
           } else {
-              Write-Host "PSScriptAnalyzer is already installed."
+              Write-Host "PSScriptAnalyzerは既にインストールされています。"
           }
 
-          # Import the PSScriptAnalyzer module
-          Write-Host "Importing PSScriptAnalyzer module..."
+          # PSScriptAnalyzerモジュールをインポート
+          Write-Host "PSScriptAnalyzerモジュールをインポートしています..."
           Import-Module -Name PSScriptAnalyzer -Force
 
-          # Find all .ps1 files
-          Write-Host "Looking for .ps1 files to analyze..."
+          # すべての.ps1ファイルを検索
+          Write-Host ".ps1ファイルを分析するために検索しています..."
           $files = Get-ChildItem -Path . -Recurse -Filter "*.ps1"
 
-          # Initialize a flag to track if any errors occur
+          # エラーが発生したかどうかを追跡するフラグを初期化
           $hasErrors = $false
 
           if ($files.Count -eq 0) {
-              Write-Host "No .ps1 files found in the directory."
+              Write-Host "ディレクトリに.ps1ファイルが見つかりませんでした。"
           } else {
-              Write-Host "Found $($files.Count) .ps1 files. Starting analysis..."
+              Write-Host "$($files.Count)個の.ps1ファイルが見つかりました。分析を開始しています..."
               foreach ($file in $files) {
                   try {
-                      Write-Host "Analyzing file: $($file.FullName)"
+                      Write-Host "ファイルを分析中: $($file.FullName)"
                       Invoke-ScriptAnalyzer -Path $file.FullName -Recurse
                   } catch {
-                      Write-Host "Error analyzing file: $($file.FullName)"
+                      Write-Host "ファイルの分析中にエラーが発生しました: $($file.FullName)"
                       Write-Host $_
-                      # Set the error flag to true
+                      # エラーフラグをtrueに設定
                       $hasErrors = $true
                   }
               }
-              Write-Host "Analysis completed."
+              Write-Host "分析が完了しました。"
           }
 
-          # If any errors occurred, exit with a non-zero status
+          # エラーが発生した場合、非ゼロステータスで終了
           if ($hasErrors) {
-              Write-Host "Errors were detected during PowerShell linting."
+              Write-Host "PowerShellリント中にエラーが検出されました。"
               exit 1
           }
 
-      # YAML lint
-      - name: Run YAML lint
+      # YAMLリント
+      - name: YAMLリントの実行
         shell: bash
         run: |
           files=$(find ./.github/workflows -name "*.yml" -o -name "*.yaml")
           if [-z "$files"]; then
-            echo "No YAML files found. Skipping yamllint."
+            echo "YAMLファイルが見つかりませんでした。yamllintをスキップします。"
           else
             echo "$files" | xargs yamllint
           fi
