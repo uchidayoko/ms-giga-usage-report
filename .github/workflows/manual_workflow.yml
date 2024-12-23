@@ -21,7 +21,7 @@ jobs:
       AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
 
     steps:
-      - name: Set env
+      - name: 環境変数の設定
         shell: bash
         run: |
           # SharePointサイト名
@@ -66,7 +66,7 @@ jobs:
           ## Entra ID ユーザー情報
           echo "ENTRAID_DIR=Roster/MsGraph/UnConcealed" >> $GITHUB_ENV
 
-      - name: Install PowerShell
+      - name: PowerShellのインストール
         run: |
           sudo apt-get update
           sudo apt-get install -y powershell
@@ -241,7 +241,6 @@ jobs:
 
           # DATE_LIST 環境変数を取得し、カンマで分割して配列に変換
           $dates = $env:DATE_LIST -split ','
-
           # 各日付に対して処理を実行
           foreach ($dateStr in $dates) {
               Write-Output "Processing date: $dateStr"
@@ -315,7 +314,6 @@ jobs:
                       $encodedPath = [uri]::EscapeDataString($currentPath.Trim('/'))
                       $checkUrl = "https://$env:AZURE_TENANT_NAME.sharepoint.com/sites/$env:SITE_NAME/_api/web/GetFolderByServerRelativeUrl('$encodedPath')"
                       $createUrl = "https://$env:AZURE_TENANT_NAME.sharepoint.com/sites/$env:SITE_NAME/_api/web/folders"
-
                       try {
                           # フォルダが存在するか確認
                           Invoke-RestMethod -Uri $checkUrl -Method Get -Headers @{ Authorization = "Bearer $env:SHAREPOINT_TOKEN"; "Accept" = "application/json;odata=verbose" }
@@ -368,12 +366,19 @@ jobs:
           if (-not (Test-Path -Path $outputDir)) {
               New-Item -Path $outputDir -ItemType Directory
           }
-          # ユーザー情報を取得 → CSV形式に変換して出力
-          $users = Get-MgUser -All
-          Write-Host "ユーザー情報: $($users.Count) 件取得"
           $outputPath = "$outputDir/${dateStr}_result_Get-MgUser.csv"
-          $users | Export-Csv -Path $outputPath -NoTypeInformation
-          Write-Host "ユーザー情報(csv返還後): $($users.Count) 件取得"
+
+          # 全ユーザーを取得しつつ、AssignedLicenses を展開
+          $users = Get-MgUser -Property Id, UserPrincipalName, DisplayName, AssignedLicenses, AccountEnabled -All | Select-Object -Property Id, UserPrincipalName, DisplayName, AccountEnabled, @{Name="AssignedLicenses"; Expression={ ($_.AssignedLicenses | ForEach-Object { $_.skuId }) -join "," }}
+
+          Write-Host "ユーザー情報を取得: $($users.Count) 件"
+
+          # CSVにエクスポート
+          $users | Export-Csv -Path $outputPath -NoTypeInformation -Encoding UTF8
+
+          # Shift-JISエンコーディングに変換して保存
+          $tempContent = Get-Content -Path $outputPath
+          $tempContent | Out-File -FilePath $outputPath -Encoding Shift-JIS
 
           Disconnect-MgGraph
 

@@ -1,23 +1,23 @@
 <#
     .SYNOPSIS
-        SharePointç¹§ï½µç¹§ï½¤ç¹åŒ»ï¿½è´æ‡ˆï¿½
+        SharePointƒTƒCƒg‚Ìì¬
 
     .DESCRIPTION
-        M365ç¹ï¿½ãƒªç¹ï½³ç¹åŒ»ãƒ§ç¹ï½¼ç¹§ï½¿ç¹§å®šå¡˜é¨é˜ªâ˜†ç¹§ä¹â—†ç¹§âˆšï¿½SharePointç¹§ï½µç¹§ï½¤ç¹åŒ»ï¿½è´æ‡ˆï¿½
-        èœ¿ç¿«ï¿½ç¸²ãƒ»ntra ID ç¹§ï½¢ç¹åŠ±Îœç¹§ï½±ç¹ï½¼ç¹§ï½·ç¹ï½§ç¹ï½³ç¸ºï½¸ç¸ºï½®è®“ï½©é«¯è‰ï½»å€…ï½¸
+        M365ƒeƒiƒ“ƒgƒf[ƒ^‚ğ’~Ï‚·‚é‚½‚ß‚ÌSharePointƒTƒCƒg‚Ìì¬
+        ‹y‚ÑAEntra ID ƒAƒvƒŠƒP[ƒVƒ‡ƒ“‚Ö‚ÌŒ ŒÀ•t—^
 
     .PARAMETER applicationId
-        [è ¢ï¿½ï¿½ Entra ID ç¹§ï½¢ç¹åŠ±Îœç¹§ï½±ç¹ï½¼ç¹§ï½·ç¹ï½§ç¹ï½³ID
+        [•K{] Entra ID ƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID
 
     .PARAMETER securityGroupObjectId
-        [è ¢ï¿½ï¿½ SharePointç¹§ï½µç¹§ï½¤ç¹åŒ»â†“èŸ‡ï½¾ç¸ºåŠ±â€»ç¹§ï½¢ç¹§ï½¯ç¹§ï½»ç¹§ï½¹è®“ï½©ç¹§å‰ƒï½»å€…ï½¸å¼±â˜†ç¹§ä¹â—†ç¹§âˆšï¿½Entra ID ç¹§ï½»ç¹§ï½­ç¹ï½¥ç¹ï½ªç¹ï¿½ã…ç¹§ï½°ç¹ï½«ç¹ï½¼ç¹åŠ±ï¿½Object ID
-
-    .PARAMETER tenantName
-        [å¿…é ˆ] ãƒ†ãƒŠãƒ³ãƒˆåï¼ˆãƒ‰ãƒ¡ã‚¤ãƒ³ã®ä¸€éƒ¨ï¼‰
-        ex. ãƒ‰ãƒ¡ã‚¤ãƒ³åãŒ"example.onmicrosoft.com"ã®å ´åˆã€"example"ã¨ã™ã‚‹ã€‚
-
+        [•K{] SharePointƒTƒCƒg‚É‘Î‚µ‚ÄƒAƒNƒZƒXŒ ‚ğ•t—^‚·‚é‚½‚ß‚ÌEntra ID ƒZƒLƒ…ƒŠƒeƒBƒOƒ‹[ƒv‚ÌObject ID
+        
+    .PARAMETER sharepointDomain
+        [•K{] SharePointƒTƒCƒg‚ÌƒhƒƒCƒ“
+        ex. SharePonitƒTƒCƒgURL‚ª"https://contoso.sharepoint.com"‚ÌA"contoso.sharepoint.com"
+    
     .EXAMPLE
-        PS> Create-SharepointSite.ps1 -applicationId "your-application-id" -securityGroupObjectId "your-security-group-object-id" -tenantName "your-tenant-name"
+        PS> Create-SharepointSite.ps1 -applicationId "your-application-id" -securityGroupObjectId "your-security-group-object-id" -sharepointDomain "your-sharepoint-domain"
 #>
 
 Param(
@@ -28,23 +28,22 @@ Param(
     [String]$securityGroupObjectId,
 
     [Parameter(Mandatory=$true)]
-    [String]$tenantName
+    [String]$sharepointDomain
 )
 
-# å¤‰æ•°å®šç¾©
+# •Ï”’è‹`
 $date = (Get-Date).ToString("yyyyMMdd")
 $logFolder = ".\log"
 $logFile = "$logFolder\$date`_log.txt"
 $outputs = Get-Content -Path ".\outputs.json" | ConvertFrom-Json
 $spoSiteName = "M365UsageRecords"
-$spoSiteUrl = "https://$tenantName.sharepoint.com/sites/$spoSiteName"
+$spoSiteUrl = "https://$sharepointDomain/sites/$spoSiteName"
 $spoSiteTemplate = "STS#3"
 $spoSiteLocaleId = 1041
 $spoSiteStorageQuota = 1024
 
-
-# é–¢æ•°å®šç¾©
-## ãƒ­ã‚°å‡ºåŠ›é–¢æ•°
+# ŠÖ”’è‹`
+## ƒƒOo—ÍŠÖ”
 function Write-Log {
     param (
         [string]$Message,
@@ -70,7 +69,7 @@ function Write-Log {
     $logMessage | Out-File -FilePath $logFile -Append
 }
 
-
+# ƒƒOƒtƒHƒ‹ƒ_‚ª‘¶İ‚µ‚È‚¢ê‡‚Íì¬
 if (!(Test-Path -Path $logFolder)) {
     New-Item -ItemType Directory -Path $logFolder | Out-Null
 }
@@ -79,6 +78,7 @@ Write-Log -Message "Start executing Create-SharepointSite.ps1"
 try {
     Write-Log -Message "Get information of the currently signed-in user."
 
+    # ƒTƒCƒ“ƒCƒ“‚µ‚Ä‚¢‚éƒ†[ƒU[‚Ìƒ[ƒ‹ƒAƒhƒŒƒX‚ğæ“¾
     $userMail = az ad signed-in-user show --query userPrincipalName --output tsv
     if ([string]::IsNullOrEmpty($userMail)) {
         Write-Log -Message "Failed to get signed-in user's email address."
@@ -87,6 +87,7 @@ try {
         Write-Log -Message "Signed-in user email got successfully: $userMail"
     }
 
+    # ƒeƒiƒ“ƒgî•ñ‚ğæ“¾
     $tenantInfo = Get-AzTenant
     if (-not $tenantInfo) {
         Write-Log -Message "Failed to get tenant information."
@@ -100,11 +101,13 @@ try {
 
     Write-Log -Message "Checking if the SharePoint site already exists."
     try {
+        # SharePointƒTƒCƒg‚ªŠù‚É‘¶İ‚·‚é‚©Šm”F
         Get-SPOSite -Identity $spoSiteUrl -ErrorAction SilentlyContinue
         Write-Log -Message "SharePoint site already exists. No action taken." -Level "Warning"
     }
     catch {
         Write-Log -Message "No existing SharePoint site found. Creating a new site."
+        # SharePointƒTƒCƒg‚ğV‹Kì¬
         New-SPOSite -Url $spoSiteUrl -Owner $userMail -StorageQuota $spoSiteStorageQuota -Template $spoSiteTemplate -LocaleId $spoSiteLocaleId -Title $spoSiteName
         if ($LASTEXITCODE -ne 0) {
             Write-Log -Message "Failed to create SharePoint site."
@@ -115,29 +118,35 @@ try {
     }
 
     Write-Log -Message "Creating LoginName for the security group."
+    # ƒZƒLƒ…ƒŠƒeƒBƒOƒ‹[ƒv‚ÌƒƒOƒCƒ“–¼‚ğì¬
     $securityGroupLoginName = "c:0t.c|tenant|$securityGroupObjectId"
 
     Write-Log -Message "Adding the security group as a site collection administrator."
     $groupName = "Access Permission Group for M365 Usage Report"
 
+    # ƒOƒ‹[ƒv‚ª‘¶İ‚µ‚È‚¢ê‡‚ÍV‹Kì¬
     $group = Get-SPOSiteGroup -Site $spoSiteUrl | Where-Object { $_.Title -eq $groupName }
 
     if ($null -eq $group) {
         New-SPOSiteGroup -Site $spoSiteUrl -Group $groupName -PermissionLevels "Full Control"
     }
 
+    # ƒZƒLƒ…ƒŠƒeƒBƒOƒ‹[ƒv‚ğƒTƒCƒgƒRƒŒƒNƒVƒ‡ƒ“ŠÇ—Ò‚Æ‚µ‚Ä’Ç‰Á
     Add-SPOUser -Site $spoSiteUrl -LoginName $securityGroupLoginName -Group $groupName
 
     Write-Log -Message "Creating a service principal."
+    # ƒT[ƒrƒXƒvƒŠƒ“ƒVƒpƒ‹‚ğì¬
     New-MgServicePrincipal -AppId $applicationId -ErrorAction SilentlyContinue
 
     Write-Log -Message "Getting the service principal."
+    # ƒT[ƒrƒXƒvƒŠƒ“ƒVƒpƒ‹‚ğæ“¾
     $servicePrincipal = Get-MgServicePrincipal -Filter "AppId eq '$applicationId'"
 
     Write-Log -Message "Service Principal ID: $($servicePrincipal.Id)"
 
     Write-Log -Message "Getting site information."
-    $siteInfo = Get-MgSite -SiteId "$tenantName.sharepoint.com:/sites/$spoSiteName"
+    # ƒTƒCƒgî•ñ‚ğæ“¾
+    $siteInfo = Get-MgSite -SiteId "${sharepointDomain}:/sites/$spoSiteName"
     if (-not $siteInfo) {
         Write-Log -Message "Failed to get site information for '$spoSiteName'."
         throw "Failed to get site information."
@@ -161,25 +170,23 @@ try {
     }
 
     Write-Log -Message "Granting the application permissions to the site."
+    # ƒAƒvƒŠƒP[ƒVƒ‡ƒ“‚ÉƒTƒCƒg‚Ö‚ÌŒ ŒÀ‚ğ•t—^
     New-MgSitePermission -SiteId $siteId -BodyParameter $params
 
     Write-Log -Message "Writing updated data to outputs.json file."
+    # XV‚³‚ê‚½ƒf[ƒ^‚ğoutputs.jsonƒtƒ@ƒCƒ‹‚É‘‚«‚Ş
     $outputs.tenantId = $tenantId
     $outputs.siteUrl = $spoSiteUrl
     $outputs.deployProgress."05" = "completed"
     $outputs | ConvertTo-Json | Set-Content -Path ".\outputs.json"
     
     Write-Log -Message "Execution of Create-SharepointSite.ps1 is complete."
+    Write-Log -Message "---------------------------------------------"
 }
 catch{
     $outputs.deployProgress."05" = "failed"
     $outputs | ConvertTo-Json | Set-Content -Path ".\outputs.json"
 
     Write-Log -Message "An error has occurred: $_" -Level "Error"
-}
-finally{
-    Write-Log -Message "Logging out from SharePoint Online Management Shell."
-    Disconnect-SPOService
-
     Write-Log -Message "---------------------------------------------"
 }

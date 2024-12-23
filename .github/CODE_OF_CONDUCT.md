@@ -36,7 +36,7 @@
 ## 報告手順
 
 不適切な行動を目撃した場合、または懸念がある場合は、以下の連絡先にご報告ください：  
-**メール**: [258b70ac.groups.uchida.co.jp@jp.teams.ms](mailto:258b70ac.groups.uchida.co.jp@jp.teams.ms)
+**メール**: [ms-giga-usage-report@groups.uchida.co.jp](mailto:ms-giga-usage-report@groups.uchida.co.jp)
 
 報告は全て慎重に取り扱われ、報告者のプライバシーを尊重します。
 

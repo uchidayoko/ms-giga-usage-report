@@ -10,7 +10,7 @@
 
     .PARAMETER tenantName
         [必須] テナント名（ドメインの一部）
-        ex. ドメイン名が"example.onmicrosoft.com"の場合、"example"とする。
+        ex. ドメイン名が"contoso.onmicrosoft.com"の場合、"contoso"とする。
 
     .PARAMETER applicationId
         [必須] Entra ID アプリケーションID

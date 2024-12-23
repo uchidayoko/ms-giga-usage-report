@@ -54,7 +54,7 @@ Write-Log -Message "Start executing deploy1.ps1"
 
 try{
     # JSONファイルを読み込み、オブジェクトに変換
-    Write-Log -Message "Loading params.json and converting it to an object."
+    Write-Log -Message "Loading outputs.json and converting it to an object."
     
     # outputsの読み込み
     $outputs = Get-Content -Path $outputsFilePath | ConvertFrom-Json
