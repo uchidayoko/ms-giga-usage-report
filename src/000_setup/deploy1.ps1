@@ -14,7 +14,7 @@ $date = (Get-Date).ToString("yyyyMMdd")
 $logFolder = ".\log"
 $logFile = "$logFolder\$date`_log.txt"
 $outputsFilePath = ".\outputs.json"
-$runningScript = ""
+$currentJob = ""
 
 
 # 関数定義
@@ -59,7 +59,7 @@ try{
     # outputsの読み込み
     $outputs = Get-Content -Path $outputsFilePath | ConvertFrom-Json
     # モジュールのインストール
-    $runningScript = "01_Install-Module\Install-Module.ps1"
+    $currentJob = "01_Install-Module\Install-Module.ps1"
     if($outputs.deployProgress."01" -ne "completed") {
         Write-Log -Message "Starting module installation."
         .\01_Install-Module\Install-Module.ps1
@@ -69,7 +69,7 @@ try{
 }
 catch{
     # エラーが発生した場合
-    Write-Log -Message "An error has occurred while running $runningScript." -Level "Error"
+    Write-Log -Message "An error has occurred while running ${currentJob}: $_." -Level "Error"
     Write-Log -Message "Please retry exec.bat." -Level "Error"
     Write-Log -Message "---------------------------------------------"
 }

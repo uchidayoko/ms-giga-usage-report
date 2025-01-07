@@ -76,7 +76,7 @@ try{
         az ad app create --display-name $appDisplayName
         if ($LASTEXITCODE -ne 0) {
             Write-Log -Message "Failed to create the Entra ID Application."
-            throw "Entra ID Application creation failed."
+            throw "Entra ID Application creation failed"
         } else {
             Write-Log -Message "Entra ID Application created successfully."
         }
@@ -91,7 +91,7 @@ try{
 
     # アプリケーションIDが取得できていない場合はエラーとする
     if ([string]::IsNullOrEmpty($appId) -or [string]::IsNullOrEmpty($appObjectId)) {
-        throw "Failed to get Entra ID Application ID or Object ID for '$appDisplayName'."
+        throw "Failed to get Entra ID Application ID or Object ID for '$appDisplayName'"
     } else {
         Write-Log -Message "Entra ID Application ID got successfully: $appId"
         Write-Log -Message "Entra ID Application Object ID got successfully: $appObjectId"
@@ -119,10 +119,21 @@ try{
     az ad app permission admin-consent --id $appId
     Start-Sleep -Seconds 5
     az ad app permission admin-consent --id $appId
+    if ($? -ne $true) {
+        throw "Failed to grant admin consent for API permissions"
+    }
 
     # フェデレーション認証の設定
     Write-Log -Message "Setting up federated authentication."
     New-AzADAppFederatedCredential -ApplicationObjectId $appObjectId -Audience api://AzureADTokenExchange -Issuer 'https://token.actions.githubusercontent.com' -Name 'GitHub-Actions-Credential' -Subject "repo:$githubOrganizationName/${githubRepositoryName}:ref:refs/heads/main"
+
+    $federatedCredential = Get-AzADAppFederatedCredential -ApplicationObjectId $appObjectId
+
+    if ($federatedCredential) {
+        Write-Log -Message "Federated authentication setup was successful."
+    } else {
+        throw "Failed to set up federated authentication"
+    }
 
     # データを変更
     Write-Log -Message "Writing updated data to outputs.json file."
@@ -138,6 +149,5 @@ catch{
     $outputs.deployProgress."03" = "failed"
     $outputs | ConvertTo-Json | Set-Content -Path ".\outputs.json"
 
-    Write-Log -Message "An error has occurred: $_" -Level "Error"
-    Write-Log -Message "---------------------------------------------"
+    throw
 }

@@ -1,27 +1,26 @@
 <#
     .SYNOPSIS
-        deploy2.ps1ã§æ§‹ç¯‰ã—ãŸç’°å¢ƒã‚’å‰Šé™¤
+        deploy2.ps1‚Å\’z‚µ‚½ŠÂ‹«‚ğíœ
 
     .DESCRIPTION
-        GitHubã®ãƒªãƒã‚¸ãƒˆãƒªã€Entra ID ã‚¢ãƒ—ãƒªã‚±ãƒ¼ã‚·ãƒ§ãƒ³ã€Entra ID ã‚°ãƒ«ãƒ¼ãƒ—ã€SharePointã‚µã‚¤ãƒˆã®å‰Šé™¤
+        Entra ID ƒAƒvƒŠƒP[ƒVƒ‡ƒ“AEntra ID ƒOƒ‹[ƒvASharePointƒTƒCƒg‚Ìíœ
 
     .EXAMPLE
         PS> reset.ps1
 #>
 
-# å¤‰æ•°å®šç¾©
+# •Ï”’è‹`
 $date = (Get-Date).ToString("yyyyMMdd")
 $logFolder = ".\log"
 $logFile = "$logFolder\$date`_log.txt"
 $paramsFilePath = ".\params.json"
 $outputsFilePath = ".\outputs.json"
-$runningScript = ""
 $mgGraphConnection = $false
 $spoServiceConnection = $false
 
 
-# é–¢æ•°å®šç¾©
-## ãƒ­ã‚°å‡ºåŠ›é–¢æ•°
+# ŠÖ”’è‹`
+## ƒƒOo—ÍŠÖ”
 function Write-Log {
     param (
         [string]$Message,
@@ -44,11 +43,11 @@ function Write-Log {
             $logMessage = "$timestamp - [ERROR] $Message"
         }
     }
-    # ãƒ­ã‚°ãƒ•ã‚¡ã‚¤ãƒ«ã«å‡ºåŠ›
+    # ƒƒOƒtƒ@ƒCƒ‹‚Éo—Í
     $logMessage | Out-File -FilePath $logFile -Append
 }
 
-# logãƒ•ã‚©ãƒ«ãƒ€ãŒå­˜åœ¨ã—ãªã„å ´åˆã¯ä½œæˆ
+# logƒtƒHƒ‹ƒ_‚ª‘¶İ‚µ‚È‚¢ê‡‚Íì¬
 if (!(Test-Path -Path $logFolder)) {
     New-Item -ItemType Directory -Path $logFolder | Out-Null
 }
@@ -61,58 +60,47 @@ if ( $confirmation -ne "yes") {
 Write-Log -Message "Start executing reset.ps1"
 
 try{
-    # params.json ã‚’èª­ã¿è¾¼ã¿ã€ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆã«å¤‰æ›
+    # params.json‚ğ“Ç‚İ‚İAƒIƒuƒWƒFƒNƒg‚É•ÏŠ·
     Write-Log -Message "Loading params.json and converting it to an object."
     $params = Get-Content -Path $paramsFilePath | ConvertFrom-Json
 
-    # outputs.jsonã®é …ç›®ã‚’å‰Šé™¤
+    # outputs.json‚ğ“Ç‚İ‚İAƒIƒuƒWƒFƒNƒg‚É•ÏŠ·
     Write-Log -Message "Loading outputs.json and converting it to an object."
     $outputs = Get-Content -Path $outputsFilePath | ConvertFrom-Json
-
-    Write-Log -Message "Resetting outputs.json"
-    $outputs.appId = ""
-    $outputs.securityGroupObjectId = ""
-    $outputs.tenantId = ""
-    $outputs.siteUrl = ""
-    $outputs.deployProgress."02" = ""
-    $outputs.deployProgress."03" = ""
-    $outputs.deployProgress."04" = ""
-    $outputs.deployProgress."05" = ""
-    $outputs.deployProgress."06" = ""
-
-    $outputs | ConvertTo-Json | Set-Content -Path ".\outputs.json"
-
-    # Microsoft Graphã«æ¥ç¶š
+    
+    # Microsoft Graph‚ÉÚ‘±
     Write-Log -Message "Connecting to Microsoft Graph."
-    try {
-        Connect-MgGraph -Scopes "Group.ReadWrite.All", "Application.ReadWrite.All"
-        if ($? -ne $true) {
-            throw "Failed to connect to Microsoft Graph."
-        }
-        $mgGraphConnection = $true
-        Write-Log -Message "Connected to Microsoft Graph successfully."
-    } 
-    catch {
-        throw "Microsoft Graph connection failed. : $_"
+    
+    Connect-MgGraph -Scopes "Group.ReadWrite.All", "Application.ReadWrite.All"
+    if ($? -ne $true) {
+        throw "Failed to connect to Microsoft Graph."
     }
-
-    # Entra ID ã‚¢ãƒ—ãƒªã‚±ãƒ¼ã‚·ãƒ§ãƒ³ã®å‰Šé™¤
+    $mgGraphConnection = $true
+    Write-Log -Message "Connected to Microsoft Graph successfully."
+    
+    # Entra ID ƒAƒvƒŠƒP[ƒVƒ‡ƒ“‚Ìíœ
     $app = Get-MgApplication -Filter "displayName eq 'MsDeviceUsageReport-App'"
     if ($null -ne $app.id){
-        Write-Log -Message "Deleting Entra ID Application."
+        Write-Log -Message "Deleting the Entra ID application named 'MsDeviceUsageReport-App'."
         Remove-MgApplication -ApplicationId $app.id
+        $outputs.appId = ""
+        $outputs.deployProgress."03" = ""
+        $outputs | ConvertTo-Json | Set-Content -Path ".\outputs.json"
     }
 
-    # Entra ID ã‚°ãƒ«ãƒ¼ãƒ—ã®å‰Šé™¤
+    # Entra ID ƒOƒ‹[ƒv‚Ìíœ
     $securityGroups = Get-MgGroup -Filter "DisplayName eq 'M365UsageRecords_site_access_group'"
     if ($null -ne $securityGroups){
-        Write-Log -Message "Deleting security group."
+        Write-Log -Message "Deleting the security group named 'M365UsageRecords_site_access_group'."
         ForEach( $securityGroup in $securityGroups ) {
             Remove-MgGroup -GroupId $securityGroup.id
         }
+        $outputs.securityGroupObjectId = ""
+        $outputs.deployProgress."04" = ""
+        $outputs | ConvertTo-Json | Set-Content -Path ".\outputs.json"
     }
 
-    # SharePoint Onlineç®¡ç†ã‚·ã‚§ãƒ«ã¸ã®æ¥ç¶š
+    # SharePoint OnlineŠÇ—ƒVƒFƒ‹‚Ö‚ÌÚ‘±
     $sharepointDomain = $params.sharepointDomain
     $tenantName = ($sharepointDomain -split "\.")[0]
     $adminUrl = "https://$tenantName-admin.sharepoint.com"
@@ -121,21 +109,23 @@ try{
     Import-Module Microsoft.Online.SharePoint.PowerShell -DisableNameChecking
     Connect-SPOService -Url $adminUrl
     if ($? -ne $true) {
-        Write-Log -Message "Failed to connect to SharePoint Online Management Shell."
-        throw "SharePoint Online Management Shell connection failed."
+        throw "Failed to connect to SharePoint Online Management Shell."
     } else {
         $spoServiceConnection = $true
         Write-Log -Message "Connected to SharePoint Online Management Shell successfully."
     }
 
-    # SharePointã‚µã‚¤ãƒˆã®å‰Šé™¤
+    # SharePointƒTƒCƒg‚Ìíœ
     $spoSiteUrl = "https://$sharepointDomain/sites/M365UsageRecords"
 
     try {
-        Get-SPOSite -Identity $spoSiteUrl -ErrorAction SilentlyContinue
-        Write-Log -Message "Deleting SharePoint site."
+        Write-Log -Message "Deleting the SharePoint site named 'M365UsageRecords'."
         Remove-SPOSite -Identity $spoSiteUrl
         Remove-SPODeletedSite -Identity $spoSiteUrl
+        $outputs.tenantId = ""
+        $outputs.siteUrl = ""
+        $outputs.deployProgress."05" = ""
+        $outputs | ConvertTo-Json | Set-Content -Path ".\outputs.json"
     }
     catch {
         Write-Log -Message "No existing SharePoint site found."
@@ -144,18 +134,18 @@ try{
     Write-Log -Message  "Reset is complete."
 }
 catch{
-    # ã‚¨ãƒ©ãƒ¼ãŒç™ºç”Ÿã—ãŸå ´åˆ
-    Write-Log -Message "An error has occurred while running $runningScript." -Level "Error"
+    # ƒGƒ‰[‚ª”­¶‚µ‚½ê‡
+    Write-Log -Message "An error has occurred: $_" -Level "Error"
     Write-Log -Message "Please retry reset.bat." -Level "Error"
 }
 finally {
-    # Microsoft Graphã¸ã®æ¥ç¶šã‚’åˆ‡æ–­
+    # Microsoft Graph‚Ö‚ÌÚ‘±‚ğØ’f
     if ($mgGraphConnection) {
         Write-Log -Message "Disconnect from Microsoft Graph."
         Disconnect-MgGraph
     }
     
-    # SharePoint Online ç®¡ç†ã‚·ã‚§ãƒ«ã¸ã®æ¥ç¶šã‚’åˆ‡æ–­
+    # SharePoint Online ŠÇ—ƒVƒFƒ‹‚Ö‚ÌÚ‘±‚ğØ’f
     if ($spoServiceConnection) {
         Write-Log -Message "Disconnect from SPO Service."
         Disconnect-SPOService

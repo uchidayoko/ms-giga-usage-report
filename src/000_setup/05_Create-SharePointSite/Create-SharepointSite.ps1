@@ -111,7 +111,7 @@ try {
         New-SPOSite -Url $spoSiteUrl -Owner $userMail -StorageQuota $spoSiteStorageQuota -Template $spoSiteTemplate -LocaleId $spoSiteLocaleId -Title $spoSiteName
         if ($LASTEXITCODE -ne 0) {
             Write-Log -Message "Failed to create SharePoint site."
-            throw "SharePoint site creation failed."
+            throw "SharePoint site creation failed"
         } else {
             Write-Log -Message "SharePoint site created successfully."
         }
@@ -149,7 +149,7 @@ try {
     $siteInfo = Get-MgSite -SiteId "${sharepointDomain}:/sites/$spoSiteName"
     if (-not $siteInfo) {
         Write-Log -Message "Failed to get site information for '$spoSiteName'."
-        throw "Failed to get site information."
+        throw "Failed to get site information"
     } else {
         Write-Log -Message "Site information got successfully for '$spoSiteName'."
     }
@@ -187,6 +187,5 @@ catch{
     $outputs.deployProgress."05" = "failed"
     $outputs | ConvertTo-Json | Set-Content -Path ".\outputs.json"
 
-    Write-Log -Message "An error has occurred: $_" -Level "Error"
-    Write-Log -Message "---------------------------------------------"
+    throw
 }

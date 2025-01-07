@@ -89,6 +89,10 @@ try{
     # 作業者のGitHub上の構築先プライベートリポジトリをクローン
     Write-Host "Cloning the target GitHub private repository."
     git clone https://github.com/$githubOrganizationName/$githubRepositoryName.git
+    if ($? -ne $true) {
+        throw "Failed to clone the target GitHub private repository"
+    }
+
     Set-Location $githubRepositoryName
     
     # マスタリポジトリの全てのフォルダをローカルのブランチにコピー
@@ -117,16 +121,15 @@ try{
 
     # コピー後の確認
     ## コピーしたフォルダ名の取得
-    $sourceFolders = Get-Item $sourcePath | Select-Object Name
+    $sourceFolders = Get-Item $sourcePath
     ForEach( $folder in $sourceFolders ) {
         $folderName = $folder.Name
         if ( !(Test-Path -Path "$destinationPath\$folderName") ) {
-            Write-Error "Failed to copy '$folderName' folder to '$destinationPath'. : $_"
-            exit 1
-        } else {
-            Write-Host "'$folderName' folder copied successfully to '$destinationPath'."           
+            throw "Failed to copy '$folderName' folder to '$destinationPath'"
         }
+        Write-Host "'$folderName' folder copied successfully to '$destinationPath'."
     }
+
     git add .
     git config --global user.name $githubAccountName
     git config --global user.email $githubAccountMail
@@ -147,10 +150,11 @@ try{
     Write-Log -Message "---------------------------------------------"
 }
 catch{
+    Set-Location $returnPath
+
     # エラーが発生した場合
     $outputs.deployProgress."02" = "failed"
     $outputs | ConvertTo-Json | Set-Content -Path ".\outputs.json"
 
-    Write-Log -Message "An error has occurred: $_" -Level "Error"
-    Write-Log -Message "---------------------------------------------"
+    throw
 }
