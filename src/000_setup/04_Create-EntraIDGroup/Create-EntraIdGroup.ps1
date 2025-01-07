@@ -68,7 +68,7 @@ try{
         Write-Log -Message "Creating security group: $GroupName"
         $SecurityGroup = New-MgGroup -BodyParameter $NewGroupParams
         if (-not $SecurityGroup) {
-            throw "Security group '$GroupNamecreation' returned null."
+            throw "Security group '$GroupNamecreation' returned null"
         }
         Write-Log -Message "Security group created successfully."
     } 
@@ -81,7 +81,7 @@ try{
 
     if ([string]::IsNullOrEmpty($SecurityGroupId)) {
         Write-Log -Message "Failed to get the security group ID."
-        throw "Failed to get Security group ID."
+        throw "Failed to get Security group ID"
     } else {
         Write-Log -Message "Security group ID got successfully: $SecurityGroupId"
     }
@@ -100,7 +100,7 @@ try{
     if ($groupMembers) {
         Write-Log -Message "User with ID '$currentUserId' successfully added to the group '$GroupName'."
     } else {
-        throw "Failed to verify that the user was added to the group."
+        throw "Failed to verify that the user was added to the group"
     }
 
     # データを変更
@@ -117,6 +117,5 @@ catch{
     $outputs.deployProgress."04" = "failed"
     $outputs | ConvertTo-Json | Set-Content -Path ".\outputs.json"
 
-    Write-Log -Message "An error has occurred: $_" -Level "Error"
-    Write-Log -Message "---------------------------------------------"
+    throw
 }

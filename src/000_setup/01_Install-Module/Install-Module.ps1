@@ -31,21 +31,21 @@ function Write-Log {
         [string]$Message,
         [ValidateSet("Info", "Warning", "Error")]
         [string]$Level = "Info"
-        )
+    )
         
-        $timestamp = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
-        switch ($Level) {
-            "Info" {
-                $logMessage = "[INFO] $Message"
-                Write-Host "$timestamp - $logMessage" -ForegroundColor White
-            }
-            "Warning" {
-                $logMessage = "[WARNING] $Message"
-                Write-Host "$timestamp - $logMessage" -ForegroundColor Yellow
+    $timestamp = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
+    switch ($Level) {
+        "Info" {
+            Write-Host "[INFO] $Message" -ForegroundColor White
+            $logMessage = "$timestamp - [INFO] $Message"
+        }
+        "Warning" {
+            Write-Host "[WARNING] $Message" -ForegroundColor Yellow
+            $logMessage = "$timestamp - [WARNING] $Message"
         }
         "Error" {
-            $logMessage = "[ERROR] $Message"
-            Write-Host "$timestamp - $logMessage" -ForegroundColor Red
+            Write-Host "[ERROR] $Message" -ForegroundColor Red
+            $logMessage = "$timestamp - [ERROR] $Message"
         }
     }
     # ログファイルに出力
@@ -66,7 +66,7 @@ try{
     $RequiredModules = 'Microsoft.Online.SharePoint.PowerShell', 'Az', 'Microsoft.Graph', 'Microsoft.Graph.Sites'
     # 既にインストールされているか判定し、インストールされていない場合はインストールを行う
     ForEach( $Module in $RequiredModules ) {
-        If ( !(Get-Module -ListAvailable -Name $Module) ) {
+        If ( !(Get-InstalledModule -Name $Module) ) {
             Write-Log -Message "Installing $Module..."
             Install-Module -Name $Module -Scope CurrentUser -Force -AllowClobber
             Write-Log -Message "$Module installation completed."
@@ -86,6 +86,5 @@ catch{
     $outputs.deployProgress."01" = "failed"
     $outputs | ConvertTo-Json | Set-Content -Path ".\outputs.json"
 
-    Write-Log -Message "An error has occurred: $_" -Level "Error"
-    Write-Log -Message "---------------------------------------------"
+    throw
 }
