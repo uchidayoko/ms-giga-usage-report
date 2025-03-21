@@ -124,11 +124,16 @@ try {
     Write-Log -Message "Adding the security group as a site collection administrator."
     $groupName = "Access Permission Group for M365 Usage Report"
 
-    # グループが存在しない場合は新規作成
-    $group = Get-SPOSiteGroup -Site $spoSiteUrl | Where-Object { $_.Title -eq $groupName }
-
-    if ($null -eq $group) {
-        New-SPOSiteGroup -Site $spoSiteUrl -Group $groupName -PermissionLevels "Full Control"
+    try {
+        # グループが存在しない場合は新規作成
+        $group = Get-SPOSiteGroup -Site $spoSiteUrl | Where-Object { $_.Title -eq $groupName }
+        if ($null -eq $group) {
+            New-SPOSiteGroup -Site $spoSiteUrl -Group $groupName -PermissionLevels "Full Control"
+        }
+    }
+    catch {
+        Write-Log -Message "Error occurred while creating site group with 'Full Control'. Trying with 'フル コントロール'." -Level "Error"
+        New-SPOSiteGroup -Site $spoSiteUrl -Group $groupName -PermissionLevels "フル コントロール"
     }
 
     # セキュリティグループをサイトコレクション管理者として追加
