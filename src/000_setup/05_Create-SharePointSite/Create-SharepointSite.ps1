@@ -95,9 +95,14 @@ try {
     } else {
         Write-Log -Message "Tenant information got successfully."
     }
-
+    
     Write-Log -Message "Get tenant information."
     $tenantId = $tenantInfo.Id
+    
+    # 更新されたデータをoutputs.jsonファイルに書き込む
+    $outputs.tenantId = $tenantId
+    $outputs.siteUrl = $spoSiteUrl
+    $outputs | ConvertTo-Json | Set-Content -Path ".\outputs.json"
 
     Write-Log -Message "Checking if the SharePoint site already exists."
     try {
@@ -116,14 +121,14 @@ try {
             Write-Log -Message "SharePoint site created successfully."
         }
     }
-
+    
     Write-Log -Message "Creating LoginName for the security group."
     # セキュリティグループのログイン名を作成
     $securityGroupLoginName = "c:0t.c|tenant|$securityGroupObjectId"
-
+    
     Write-Log -Message "Adding the security group as a site collection administrator."
     $groupName = "Access Permission Group for M365 Usage Report"
-
+    
     try {
         # グループが存在しない場合は新規作成
         $group = Get-SPOSiteGroup -Site $spoSiteUrl | Where-Object { $_.Title -eq $groupName }
@@ -174,19 +179,25 @@ try {
         )
     }
 
-    Write-Log -Message "Granting the application permissions to the site."
-    # アプリケーションにサイトへの権限を付与
-    New-MgSitePermission -SiteId $siteId -BodyParameter $params
-
-    Write-Log -Message "Writing updated data to outputs.json file."
-    # 更新されたデータをoutputs.jsonファイルに書き込む
-    $outputs.tenantId = $tenantId
-    $outputs.siteUrl = $spoSiteUrl
-    $outputs.deployProgress."05" = "completed"
-    $outputs | ConvertTo-Json | Set-Content -Path ".\outputs.json"
     
-    Write-Log -Message "Execution of Create-SharepointSite.ps1 is complete."
-    Write-Log -Message "---------------------------------------------"
+    try {
+        # アプリケーションにサイトへの権限を付与
+        Write-Log -Message "Granting the application permissions to the site."
+        New-MgSitePermission -SiteId $siteId -BodyParameter $params -ErrorAction Stop
+        Write-Log -Message "Writing updated data to outputs.json file."
+        # 更新されたデータをoutputs.jsonファイルに書き込む
+        $outputs.deployProgress."05" = "completed"
+        $outputs | ConvertTo-Json | Set-Content -Path ".\outputs.json"
+        
+        Write-Log -Message "Execution of Create-SharepointSite.ps1 is complete."
+        Write-Log -Message "---------------------------------------------"
+    }
+    catch {
+        Write-Log -Message "Error occurred: $($_.Exception.Message)" -Level "Warning"
+        Write-Log -Message "Try again in another window" -Level "Warning"
+        Start-Process powershell -ArgumentList "-File", ".\05_Create-SharePointSite\Retry-NewMgSitePermission.ps1", "-siteId", $siteId, "-applicationId", $applicationId, "-displayName", $servicePrincipal.DisplayName
+        Start-Sleep -Seconds 30
+    }
 }
 catch{
     $outputs.deployProgress."05" = "failed"
